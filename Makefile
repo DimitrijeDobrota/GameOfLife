@@ -1,5 +1,11 @@
+CC=gcc
 CFLAGS = -I include
-LDFLAGS = -lncursesw
+
+ifeq ($(OS),Windows_NT)
+LDFLAGS = -lpdcurses
+else
+LDFLAGS = -lncurses
+endif
 
 SRC = src
 OBJ = obj
@@ -9,17 +15,22 @@ BIN = bin/gol
 SRCS=$(wildcard $(SRC)/*.c)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
-CFLAGS +=-ggdb -Wall
-
-all: ${BIN}
+all: $(BIN)
+debug: CFLAGS +=-ggdb -Wall
+debug: ${BIN}
 
 $(BIN): $(OBJS)
-		${CC} $^ $(CFLAGS) $(LDFLAGS) -o $@
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 $(OBJ)/%.o: $(SRC)/%.c
-		${CC} -c $< -o $@ $(CFLAGS)
+	$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
+ifeq ($(OS),Windows_NT)
 clean:
-		rm -r $(BINDIR)/* $(OBJ)/*
+	del bin\gol.exe $(subst /,\,$(OBJS))
+else
+clean:
+	rm -f $(BIN) $(OBJS)
+endif
 
-.PHONY: all clean
+.PHONY: all clean debug
