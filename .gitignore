@@ -1,7 +1,7 @@
 .ccls-cache/
 .ccls
 .clang-format
-
+.vscode/
 bin/*
 !bin/dir.info
 
