@@ -4,13 +4,13 @@
 #define MAX(a, b) ((a > b) ? a : b)
 #define MIN(a, b) ((a < b) ? a : b)
 
-#define t mat[i][j]
+#define t      mat[i][j]
 #define u_char unsigned char
 // GLOBALS
 
 u_char **mat;
-int h, w;
-u_char mod;
+int      h, w;
+u_char   mod;
 
 void addToECells(a, b) {
   mod = (mat[a][b] & 3);
@@ -218,7 +218,7 @@ void print_matrix(void) {
   }
 }
 
-int main(void) {
+int evolve_main(void) {
   int mode;
 
   srand(time(NULL));
