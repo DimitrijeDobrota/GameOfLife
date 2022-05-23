@@ -1,22 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX(a, b) ((a > b) ? a : b)
-#define MIN(a, b) ((a < b) ? a : b)
+#include "logic.h"
+#include "utils.h"
 
-#define t      mat[i][j]
-#define u_char unsigned char
-// GLOBALS
+cell **mat;
+char **evolution_names[] = {"Normal", "CoExsistance", "Predator", "Virus",
+                            "Unknown"};
 
-u_char **mat;
-int      h, w;
-u_char   mod;
+static void (*evolution_modes[])() = {
+    evolveNormal, evolveCoExist, evolvePredator, evolveVirus, evolveUnknown};
+static void (*evolve)(void);
+static int height, width;
+static int mod;
 
 void addToECells(int a, int b) {
   mod = (mat[a][b] & 3);
   mod <<= mod << 1;
-  for (int i = MAX(a - 1, 0); i <= MIN(a + 1, h); i++)
-    for (int j = MAX(b - 1, 0); j <= MIN(b + 1, w + 1); j++)
+  for (int i = MAX(a - 1, 0); i <= MIN(a + 1, height); i++)
+    for (int j = MAX(b - 1, 0); j <= MIN(b + 1, width + 1); j++)
       if (i != a || j != b)
         mat[i][j] += mod;
 }
@@ -28,42 +30,43 @@ void addToCells(int i, int j) {
       if (k != i || l != j)
         mat[k][l] += mod;
 }
+
 void doAdditions(void) {
-  for (int j = 1; j <= w; j++) {
-    mat[0][j] = mat[h][j];
-    mat[h + 1][j] = mat[1][j];
+  for (int j = 1; j <= width; j++) {
+    mat[0][j] = mat[height][j];
+    mat[height + 1][j] = mat[1][j];
     addToECells(0, j);
-    addToECells(h + 1, j);
+    addToECells(height + 1, j);
   }
 
-  for (int i = 1; i < h; i++) {
-    mat[i][0] = mat[i][w];
-    mat[i][w + 1] = mat[i][1];
+  for (int i = 1; i < height; i++) {
+    mat[i][0] = mat[i][width];
+    mat[i][width + 1] = mat[i][1];
     addToECells(i, 0);
-    addToECells(i, w + 1);
+    addToECells(i, width + 1);
   }
 
-  mat[0][0] = mat[h][w];
-  mat[0][w + 1] = mat[h][1];
-  mat[h + 1][0] = mat[1][w];
-  mat[h + 1][w + 1] = mat[1][1];
+  mat[0][0] = mat[height][width];
+  mat[0][width + 1] = mat[height][1];
+  mat[height + 1][0] = mat[1][width];
+  mat[height + 1][width + 1] = mat[1][1];
 
   addToECells(0, 0);
-  addToECells(0, w + 1);
-  addToECells(h + 1, 0);
-  addToECells(h + 1, w + 1);
+  addToECells(0, width + 1);
+  addToECells(height + 1, 0);
+  addToECells(height + 1, width + 1);
 
   /* Normal AddToCells */
-  for (int i = 1; i <= h; i++)
-    for (int j = 1; j <= w; j++)
+  for (int i = 1; i <= height; i++)
+    for (int j = 1; j <= width; j++)
       addToCells(i, j);
 }
 
 void evolveNormal(void) {
   doAdditions();
   /* Rules */
-  for (int i = 1; i <= h; i++)
-    for (int j = 1; j <= w; j++)
+  for (int i = 1; i <= height; i++)
+    for (int j = 1; j <= width; j++)
       switch (mat[i][j]) {
       case 9:
       case 12:
@@ -76,10 +79,10 @@ void evolveNormal(void) {
 }
 
 void evolveCoExist(void) {
-  unsigned char s1, s2;
+  int s1, s2;
   doAdditions();
-  for (int i = 1; i <= h; i++) {
-    for (int j = 1; j <= w; j++) {
+  for (int i = 1; i <= height; i++) {
+    for (int j = 1; j <= width; j++) {
       s2 = mat[i][j] >> 5;
       s1 = (mat[i][j] & 31) >> 2;
       if ((mat[i][j] & 3) == 0) {
@@ -101,10 +104,10 @@ void evolveCoExist(void) {
 }
 
 void evolvePredator(void) {
-  unsigned char s1, s2;
+  int s1, s2;
   doAdditions();
-  for (int i = 1; i <= h; i++) {
-    for (int j = 1; j <= w; j++) {
+  for (int i = 1; i <= height; i++) {
+    for (int j = 1; j <= width; j++) {
       s2 = mat[i][j] >> 5;
       s1 = (mat[i][j] & 31) >> 2;
       mod = mat[i][j] & 3;
@@ -132,10 +135,10 @@ void evolvePredator(void) {
 }
 
 void evolveVirus(void) {
-  unsigned char s1, s2;
+  int s1, s2;
   doAdditions();
-  for (int i = 1; i <= h; i++) {
-    for (int j = 1; j <= w; j++) {
+  for (int i = 1; i <= height; i++) {
+    for (int j = 1; j <= width; j++) {
       s2 = mat[i][j] >> 5;
       s1 = (mat[i][j] & 31) >> 2;
       mod = mat[i][j] & 3;
@@ -164,10 +167,10 @@ void evolveVirus(void) {
 
 void evolveUnknown(void) { // Assumption 3 ones and 3 twos result in 50/50
                            // chanse of 0 becoming one of them:
-  unsigned char s1, s2;
+  int s1, s2;
   doAdditions();
-  for (int i = 1; i <= h; i++) {
-    for (int j = 1; j <= w; j++) {
+  for (int i = 1; i <= height; i++) {
+    for (int j = 1; j <= width; j++) {
       s2 = mat[i][j] >> 5;
       s1 = (mat[i][j] & 31) >> 2;
       mod = mat[i][j] & 3;
@@ -205,54 +208,31 @@ void evolveUnknown(void) { // Assumption 3 ones and 3 twos result in 50/50
   }
 }
 
-void do_evolution(int steps, void (*evolution)(void)) {
+void do_evolution(int steps) {
   while (steps--) {
-    evolution();
-    print_matrix();
-    usleep(500000);
+    evolve();
   }
 }
 
-void print_matrix(void) {
-  printf("\n");
-  for (int i = 1; i <= h; i++) {
-    for (int j = 1; j <= w; j++) {
-      printf("%d ", mat[i][j] & 3);
-    }
-    printf("\n");
-  }
-}
+int logic_init(int w, int h) {
+  width = w;
+  height = h;
 
-int evolve_main(void) {
-  int mode;
-
-  srand(time(NULL));
-  /*   printf("Enter Size (W H): ");
-    scanf("%d %d", &h, &w);
-
-    mat = malloc((h + 2) * sizeof(u_char *));
-    for (int i = 0; i <= h + 1; i++)
-      mat[i] = calloc((w + 2), sizeof(u_char));
-
-    printf("Enter Matrix:\n");
-    for (int i = 1; i <= h; i++)
-      for (int j = 1; j <= w; j++) {
-        scanf("%d", &mat[i][j]);
-      }
-   */
-  int steps = 3;
-  void (*evolution_modes[])() = {evolveNormal, evolveCoExist, evolvePredator,
-                                 evolveVirus, evolveUnknown};
-
-  /* print_matrix();
-  printf("\nEnter Mode: ");
-  scanf("%d", &mode); */
-
-  do_evolution(steps, evolution_modes[mode]);
-
+  mat = malloc((h + 2) * sizeof(cell *));
   for (int i = 0; i <= h + 1; i++)
+    mat[i] = calloc((w + 2), sizeof(cell));
+
+  return 1;
+}
+
+int evolution_init(int index) {
+  evolve = evolution_modes[index];
+  return 1;
+}
+
+int logic_free(void) {
+  for (int i = 0; i <= height + 1; i++)
     free(mat[i]);
   free(mat);
-
-  return 0;
+  return 1;
 }
