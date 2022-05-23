@@ -4,11 +4,17 @@
 #include <string.h>
 
 #include "display.h"
+#include "logic.h"
 #include "utils.h"
 #include "window.h"
 
 #define center_vertical(n)      wcenter_vertical(MAIN_W, n);
 #define center_horizontal(y, n) wcenter_horizontal(MAIN_W, y, n);
+
+#define CHAR_CIRCLE     L'\u26AB'
+#define CHAR_SQUARE     L'\u2B1B'
+#define CHAR_SQUARED    L'\u2B1C'
+#define CHAR_CIRCLE_DOT L'\u2299'
 
 window_T MAIN_w = NULL;
 
@@ -59,7 +65,8 @@ int display_imenu(window_T wind, struct imenu_T *items, int size) {
   int     current = 0;
 
   for (int i = 0; i < size; i++)
-    items[i].buffer = calloc(5, sizeof(char));
+    if (!items[i].buffer)
+      items[i].buffer = calloc(5, sizeof(char));
 
   int maxi = 0, len = 0;
   for (int i = 0; i < size; i++)
@@ -146,7 +153,7 @@ redraw:;
       } else if (c == '\n') {
         wattrset(win, COLOR_PAIR(0));
         window_clear(wind);
-        items[current].callback(wind, items[current].name);
+        items[current].callback(wind, items[current].name, current);
         /* window_clear(wind); */
         return;
       } else if (c == 27)
@@ -159,8 +166,56 @@ redraw:;
   }
 }
 
+#define y_at(y) (y + screen_offset_y + h) % h + 1
+#define x_at(x) (x + screen_offset_x + w) % w + 1
+
+void display_game(window_T wind, cell **mat, int w, int h, int screen_offset_y,
+                  int screen_offset_x, int *cursor_offset_y,
+                  int *cursor_offset_x) {
+  WINDOW *win = window_win(wind);
+  wattrset(win, COLOR_PAIR(0));
+
+  int ph = window_height(wind), pw = window_wight(wind) / 2;
+
+#ifdef _WIN32
+  window_clear(wind);
+#endif
+  for (int i = 0; i < ph; i++) {
+    wmove(win, i + 1, 1);
+    for (int j = 0; j < pw; j++) {
+      wattrset(win, COLOR_PAIR((mat[y_at(i)][x_at(j)]) + 2));
+
+      if (mat[y_at(i)][x_at(j)])
+        waddstr(win, "\u26AB");
+      else
+        waddstr(win, "  ");
+    }
+  }
+
+  CLAMP(*cursor_offset_y, 0, ph - 1);
+  CLAMP(*cursor_offset_x, 0, pw - 1);
+
+  wmove(win, *cursor_offset_y + 1, *cursor_offset_x * 2 + 1);
+  wattrset(win, COLOR_PAIR(
+                    (mat[y_at(*cursor_offset_y)][x_at(*cursor_offset_x)]) + 5));
+
+  if (mat[y_at(*cursor_offset_y)][x_at(*cursor_offset_x)])
+    waddstr(win, "\u26AB");
+  else
+    waddstr(win, "  ");
+
+  wrefresh(win);
+}
+
+#define LMAX   8
+#define LEFT   0
+#define CENTER 1
+#define RIGHT  2
+
 void curses_start(void) {
   initscr();
+  window_settings(stdscr);
+
   start_color();
   use_default_colors();
 
@@ -168,13 +223,16 @@ void curses_start(void) {
   noecho();
   nodelay(stdscr, 1);
 
-  window_settings(stdscr);
-
   init_pair(0, COLOR_WHITE, -1);
   init_pair(1, COLOR_RED, -1);
 
-  init_pair(2, COLOR_WHITE, COLOR_WHITE);
-  init_pair(3, COLOR_BLACK, -1);
+  init_pair(2, COLOR_WHITE, -1);
+  init_pair(3, COLOR_WHITE, -1);
+  init_pair(4, COLOR_RED, -1);
+
+  init_pair(5, COLOR_WHITE, COLOR_CYAN);
+  init_pair(6, COLOR_WHITE, COLOR_CYAN);
+  init_pair(7, COLOR_RED, COLOR_CYAN);
 }
 
 void curses_stop(void) {
@@ -187,15 +245,14 @@ void handle_winch(int sig) {
   refresh();
   clear();
 
-  refresh();
   window_init(MAIN_w);
   window_update_children(MAIN_w);
 }
 
 int display_start(void) {
-#ifndef _WIN32
-  signal(SIGWINCH, handle_winch);
-#endif
+  /* #ifndef _WIN32 */
+  /*   signal(SIGWINCH, handle_winch); */
+  /* #endif */
 
   curses_start();
   MAIN_w = window_init(window_new());

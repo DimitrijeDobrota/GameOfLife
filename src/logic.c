@@ -5,11 +5,11 @@
 #include "utils.h"
 
 cell **mat;
-char **evolution_names[] = {"Normal", "CoExsistance", "Predator", "Virus",
-                            "Unknown"};
+char  *evolution_names[] = {"Normal", "CoExsistance", "Predator", "Virus",
+                           "Unknown"};
+int    evolution_cells[] = {2, 3, 3, 3, 3};
+int    evolution_size = 5;
 
-static void (*evolution_modes[])() = {
-    evolveNormal, evolveCoExist, evolvePredator, evolveVirus, evolveUnknown};
 static void (*evolve)(void);
 static int height, width;
 static int mod;
@@ -224,6 +224,9 @@ int logic_init(int w, int h) {
 
   return 1;
 }
+
+static void (*evolution_modes[])() = {
+    evolveNormal, evolveCoExist, evolvePredator, evolveVirus, evolveUnknown};
 
 int evolution_init(int index) {
   evolve = evolution_modes[index];

@@ -1,7 +1,3 @@
-// This is not a final version of the code
-// While I've cleaned this file up,
-// all of the game logic is still here
-
 #include <ctype.h>
 #include <curses.h>
 #include <locale.h>
@@ -10,154 +6,142 @@
 #include <unistd.h>
 #include <wchar.h>
 
+#include <time.h>
+
 #include "display.h"
 #include "file.h"
+#include "logic.h"
 #include "utils.h"
 #include "window.h"
 
-extern window_T MAIN_w;
-
-WINDOW *game_w, *board_w, *status_w;
-int     top_space = 5;
-
-void show(window_T wind, unsigned **univ, int w, int h, int y, int x) {
-  WINDOW *win = window_win(wind);
-  wattrset(win, COLOR_PAIR(0));
-
-  int ph = h, pw = w, mh, mw;
-  mh = window_height(wind);
-  mw = window_wight(wind) / 2;
-  CLAMP(ph, 0, mh);
-  CLAMP(pw, 0, mw);
-
-  int top = wcenter_vertical(wind, ph);
-  for (int i = 0; i < ph; i++) {
-    wcenter_horizontal(wind, top + i, pw * 2);
-    for (int j = 0; j < pw; j++) {
 #ifdef _WIN32
-      wattrset(win,
-               COLOR_PAIR((univ[(i + y + h) % h][(j + x + w) % w]) ? 2 : 3));
-      wprintw(win, "  ");
+#define TIME_CONST 100
 #else
-      if (univ[(i + y + h) % h][(j + x + w) % w])
-        wprintw(win, "%lc ", (wchar_t)L'\u23FA');
-      else
-        wprintw(win, "  ");
-        /* wprintw(win, "%lc", (wchar_t)L'\u2B1B'); */
-        /* wprintw(win, "  ", (wchar_t)L'\u2B1C'); */
+#define TIME_CONST 100000
 #endif
-    }
-  }
-  wrefresh(win);
-}
 
-void evolve(unsigned **univ, unsigned **new, int w, int h, int step) {
-  do {
-    for (int i = 0; i < h; i++)
-      for (int j = 0; j < w; j++) {
-        int n = 0;
-        for (int y1 = i - 1; y1 <= i + 1; y1++)
-          for (int x1 = j - 1; x1 <= j + 1; x1++)
-            if (univ[(y1 + h) % h][(x1 + w) % w])
-              n++;
+extern window_T MAIN_w;
+extern cell   **mat;
+extern char    *evolution_names[];
+extern int      evolution_cells[];
+extern int      evolution_size;
 
-        if (univ[i][j])
-          n--;
-        new[i][j] = (n == 3 || (n == 2 && univ[i][j]));
-      }
-    unsigned **t = univ;
-    univ = new;
-    new = t;
-  } while (--step);
-  unsigned **t = univ;
-  univ = new;
-  new = t;
+window_T status_w, screen_w, game_w;
+int      top_space = 5;
 
-  for (int i = 0; i < h; i++)
-    for (int j = 0; j < w; j++)
-      univ[i][j] = new[i][j];
-}
-
-void game(window_T wind, int w, int h) {
-  if (w <= 0 || h <= 0) {
-    h = window_height(wind);
-    w = window_wight(wind);
-    w /= 2;
-  }
-
-  unsigned **univ;
-  univ = malloc(h * sizeof(unsigned *));
-  for (int i = 0; i < h; i++) {
-    univ[i] = malloc(w * sizeof(unsigned));
-    for (int j = 0; j < w; j++)
-      univ[i][j] = rand() < RAND_MAX / 7 ? 1 : 0;
-  }
-
-  unsigned **new = malloc(h * sizeof(unsigned *));
-  for (int i = 0; i < h; i++) {
-    new[i] = malloc(w * sizeof(unsigned));
-  }
-
-  int oy = 0, ox = 0;
+void game(window_T wind, int w, int h, int ncells) {
+  int screen_offset_y = 0, screen_offset_x = 0;
+  int cursor_offset_y = 0, cursor_offset_x = 0;
   int in = 3;
   int gen_step = 1;
+  int play = 0;
+  int gen = 1;
 
   window_clear(wind);
+  game_w = window_center(wind, 0, h, w * 2);
+
+  clock_t start_t, end_t = 0, total_t;
 redraw:;
-  /* window_clear(wind); */
   int CLINES = LINES, CCOLS = COLS;
+
   while (TRUE) {
-    show(wind, univ, w, h, oy, ox);
-    evolve(univ, new, w, h, gen_step);
-    for (int i = 0; i < in; i++) {
+    start_t = clock();
+    display_game(game_w, mat, w, h, screen_offset_y, screen_offset_x,
+                 &cursor_offset_y, &cursor_offset_x);
+    if (play) {
+      do_evolution(gen_step);
+      gen++;
+    }
+
+    while ((total_t = (long int)(end_t - start_t)) < TIME_CONST) {
+      refresh();
       int c = getch();
       switch (c) {
+      case 'p':
+      case 'P':
+        play = !play;
+        break;
+      case 27:
+        return;
+      case '+':
+        gen_step++;
+        break;
+      case '-':
+        gen_step--;
+        break;
       case KEY_A1:
       case KEY_C1:
       case KEY_END:
       case KEY_HOME:
       case KEY_LEFT:
-        ox--;
+        screen_offset_x--;
         break;
       case KEY_A3:
       case KEY_C3:
       case KEY_NPAGE:
       case KEY_PPAGE:
       case KEY_RIGHT:
-        ox++;
+        screen_offset_x++;
         break;
       }
+
       switch (c) {
       case KEY_A1:
       case KEY_A3:
       case KEY_HOME:
       case KEY_PPAGE:
       case KEY_UP:
-        oy--;
+        screen_offset_y--;
         break;
       case KEY_C1:
       case KEY_C3:
       case KEY_DOWN:
       case KEY_END:
       case KEY_NPAGE:
-        oy++;
+        screen_offset_y++;
       }
-      break;
-      switch (c) {
-      case 27:
-        return;
-      }
-    }
-    ox = (ox + w) % w;
-    oy = (oy + h) % h;
 
+      if (!play) {
+        switch (c) {
+        case 'w':
+        case 'W':
+          cursor_offset_y--;
+          break;
+        case 's':
+        case 'S':
+          cursor_offset_y++;
+          break;
+        case 'a':
+        case 'A':
+          cursor_offset_x--;
+          break;
+        case 'd':
+        case 'D':
+          cursor_offset_x++;
+          break;
+        case ' ':
+          mat[(cursor_offset_y + screen_offset_y + h) % h + 1]
+             [(cursor_offset_x + screen_offset_x + w) % w + 1] =
+                 (mat[(cursor_offset_y + screen_offset_y + h) % h + 1]
+                     [(cursor_offset_x + screen_offset_x + w) % w + 1] +
+                  1) %
+                 ncells;
+          break;
+        }
+      }
+      screen_offset_x = (screen_offset_x + w) % w;
+      screen_offset_y = (screen_offset_y + h) % h;
+      CLAMP(gen_step, 1, 10);
+
+      /* usleep(100000); */
+      if (is_term_resized(CLINES, CCOLS)) {
+        flushinp();
+        HANDLE_RESIZE;
+        goto redraw;
+      }
+      end_t = clock(); // clock stopped
+    }
     flushinp();
-
-    usleep(200000);
-    if (is_term_resized(CLINES, CCOLS)) {
-      HANDLE_RESIZE;
-      goto redraw;
-    }
   }
 }
 
@@ -167,18 +151,43 @@ struct imenu_T imenu_items[] = {
 };
 int imenu_items_s = sizeof(imenu_items) / sizeof(struct imenu_T);
 
-void settings(window_T wind, char *pass) {
-  if (display_imenu(wind, imenu_items, imenu_items_s)) {
-    int row = atoi(imenu_items[0].buffer);
-    int column = atoi(imenu_items[1].buffer);
-    game(wind, row, column);
+void settings(window_T wind, char *pass, int index) {
+  while (TRUE) {
+    if (display_imenu(wind, imenu_items, imenu_items_s)) {
+      int row = atoi(imenu_items[0].buffer);
+      int column = atoi(imenu_items[1].buffer);
+
+      if (!row || !column)
+        continue;
+
+      logic_init(column, row);
+      evolution_init(index);
+
+      game(wind, row, column, evolution_cells[index]);
+      break;
+    } else {
+      break;
+    }
   }
 
-  for (int i = 0; i < imenu_items_s; i++)
+  for (int i = 0; i < imenu_items_s; i++) {
     free(imenu_items[i].buffer);
+    imenu_items[i].buffer = NULL;
+  }
 }
 
-void load(window_T wind, char *pass) {
+void mode_select(window_T wind, char *pass, int index) {
+  struct menu_T *mode_items = malloc(evolution_size * sizeof(struct menu_T));
+  for (int i = 0; i < evolution_size; i++) {
+    mode_items[i].name = evolution_names[i];
+    mode_items[i].callback = settings;
+  }
+  display_menu(wind, mode_items, evolution_size);
+
+  free(mode_items);
+}
+
+void load(window_T wind, char *pass, int index) {
   char **buffer;
   int    n;
 
@@ -193,28 +202,15 @@ void load(window_T wind, char *pass) {
   free(buffer);
 
   display_menu(wind, file_items, n);
-  game(wind, 0, 0);
+  mode_select(wind, "nothing", 0);
 
   free(file_items);
   free_files();
 }
 
-void exitp(window_T wind, char *pass) {
+void exitp(window_T wind, char *pass, int index) {
   display_stop();
   exit(0);
-}
-
-struct menu_T mode_items[] = {
-    {settings,         "Normalan"},
-    {settings,   "Koegzistencija"},
-    {settings, "Predator i pljen"},
-    {settings,            "Virus"},
-    {settings,      "Nepoznanost"},
-};
-int mode_items_s = sizeof(mode_items) / sizeof(struct menu_T);
-
-void mode_select(window_T wind, char *pass) {
-  display_menu(wind, mode_items, mode_items_s);
 }
 
 struct menu_T menu_items[] = {
@@ -222,26 +218,28 @@ struct menu_T menu_items[] = {
     {       load,  "Load"},
     {      exitp,  "Exit"}
 };
+
 int menu_items_s = sizeof(menu_items) / sizeof(struct menu_T);
 
 int state = 0;
 
 int main(void) {
   setlocale(LC_ALL, "");
+
   if (!display_start()) {
     printf("Couldn't start the display!\n");
   }
+
   if (!file_setup()) {
     printf("File setup error\n");
   }
 
-  T t1, t2;
-  t1 = window_split(MAIN_w, 1, 5, 0);
-  t2 = window_sibiling(t1);
+  status_w = window_split(MAIN_w, 1, 3, 0);
+  screen_w = window_sibiling(status_w);
 
   while (TRUE) {
-    display_menu(t2, menu_items, menu_items_s);
-    window_clear(t2);
+    display_menu(screen_w, menu_items, menu_items_s);
+    window_clear(screen_w);
   }
 
   if (!display_stop()) {

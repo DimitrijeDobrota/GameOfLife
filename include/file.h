@@ -8,6 +8,6 @@ void load_files(void);
 void free_files(void);
 int  file_select(char *ext, char ***buffer);
 
-void load_file(window_T win, char *pass);
+void load_file(window_T win, char *pass, int index);
 
 #endif

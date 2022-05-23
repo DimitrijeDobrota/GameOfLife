@@ -10,6 +10,7 @@ T    window_new(void);
 void window_free(T self);
 T    window_init(T self);
 T    window_split(T self, int hor, int a, int b);
+T    window_center(T self, int tmp, int h, int w);
 void window_update_children(T self);
 
 T       window_sibiling(T self);

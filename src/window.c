@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utils.h"
 #include "window.h"
 
 #define H(c) c->param[0]
@@ -52,6 +53,7 @@ int     window_wight(T self) { return W(self) - 2; }
 WINDOW *window_win(T self) { return self->win; }
 
 T window_init(T self) {
+
   self->win = stdscr;
   box(self->win, ACS_VLINE, ACS_HLINE);
   wrefresh(self->win);
@@ -69,61 +71,65 @@ void window_free(T self) {
   free(self);
 }
 
-void window_calc(T self) {
+void window_calc_children(T self) {
   T c1, c2, f, nf;
   c1 = self->c1;
   c2 = self->c2;
   int fixed = 0, *fv;
   int hor = self->mod[0], a = self->mod[1], b = self->mod[2];
 
-  if (a == 0 && b == 0)
-    return;
+  if (c2 != NULL) {
+    if (a == 0 && b == 0)
+      return;
 
-  if (a == 0) {
-    f = c2;
-    nf = c1;
-    fv = &b;
-    fixed = 1;
-  } else if (b == 0) {
-    f = c1;
-    nf = c2;
-    fv = &a;
-    fixed = 1;
-  }
-
-  if (hor) {
-    W(c1) = W(c2) = W(self) - 2;
-
-    if (!fixed) {
-      H(c1) = ((H(self) - 2) / (a + b)) * a;
-    } else {
-      H(f) = *fv;
+    if (a == 0) {
+      f = c2;
+      nf = c1;
+      fv = &b;
+      fixed = 1;
+    } else if (b == 0) {
+      f = c1;
+      nf = c2;
+      fv = &a;
+      fixed = 1;
     }
-    H(nf) = (H(self) - 2) - H(f);
 
-    X(c1) = X(c2) = X(self) + 1;
-    Y(c1) = Y(self) + 1;
-    Y(c2) = Y(self) + H(c1) + 1;
+    if (hor) {
+      W(c1) = W(c2) = W(self) - 2;
+
+      if (!fixed) {
+        H(c1) = ((H(self) - 2) / (a + b)) * a;
+      } else {
+        H(f) = *fv;
+      }
+      H(nf) = (H(self) - 2) - H(f);
+
+      X(c1) = X(c2) = X(self) + 1;
+      Y(c1) = Y(self) + 1;
+      Y(c2) = Y(self) + H(c1) + 1;
+    } else {
+      H(c1) = H(c2) = H(self) - 2;
+
+      if (!fixed) {
+        W(c1) = ((W(self) - 2) / (a + b)) * a;
+      } else {
+        W(f) = *fv;
+      }
+      W(nf) = (W(self) - 2) - W(f);
+
+      Y(c1) = Y(c2) = Y(self) + 1;
+      X(c1) = X(self) + 1;
+      X(c2) = X(self) + W(c1) + 1;
+    }
   } else {
-    H(c1) = H(c2) = H(self) - 2;
-
-    if (!fixed) {
-      W(c1) = ((W(self) - 2) / (a + b)) * a;
-    } else {
-      W(f) = *fv;
-    }
-    W(nf) = (W(self) - 2) - W(f);
-
-    Y(c1) = Y(c2) = Y(self) + 1;
-    X(c1) = X(self) + 1;
-    X(c2) = X(self) + W(c1) + 1;
+    H(c1) = ACLAMP(a + 2, 0, H(self));
+    W(c1) = ACLAMP(b + 2, 0, W(self));
+    Y(c1) = Y(self) + (H(self) - H(c1)) / 2;
+    X(c1) = X(self) + (W(self) - W(c1)) / 2;
   }
 }
 
 T window_split(T self, int hor, int a, int b) {
-  self->c1 = window_new();
-  self->c2 = window_new();
-
   self->c1 = window_new();
   self->c2 = window_new();
 
@@ -134,7 +140,7 @@ T window_split(T self, int hor, int a, int b) {
   self->mod[1] = a;
   self->mod[2] = b;
 
-  window_calc(self);
+  window_calc_children(self);
 
   WINDOW_new(self->c1);
   WINDOW_new(self->c2);
@@ -142,17 +148,35 @@ T window_split(T self, int hor, int a, int b) {
   return self->c1;
 }
 
+T window_center(T self, int tmp, int h, int w) {
+  self->c1 = window_new();
+  self->c2 = NULL;
+
+  self->mod[0] = tmp;
+  self->mod[1] = h;
+  self->mod[2] = w;
+
+  window_calc_children(self);
+  WINDOW_new(self->c1);
+
+  return self->c1;
+}
+
 void window_update_children(T self) {
-  if (self == NULL || self->c1 == NULL || self->c2 == NULL)
+  if (self == NULL || self->c1 == NULL)
     return;
 
+  window_calc_children(self);
+
   delwin(self->c1->win);
-  delwin(self->c2->win);
-  window_calc(self);
   WINDOW_new(self->c1);
-  WINDOW_new(self->c2);
   window_update_children(self->c1);
-  window_update_children(self->c2);
+
+  if (self->c2 != NULL) {
+    delwin(self->c2->win);
+    WINDOW_new(self->c2);
+    window_update_children(self->c2);
+  }
 }
 
 void window_clear(T self) {
