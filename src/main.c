@@ -15,9 +15,9 @@
 #include "window.h"
 
 #ifdef _WIN32
-#define TIME_CONST 100
+#define TIME_MOD 1
 #else
-#define TIME_CONST 100000
+#define TIME_MOD 1000
 #endif
 
 extern window_T MAIN_w;
@@ -26,49 +26,136 @@ extern char    *evolution_names[];
 extern int      evolution_cells[];
 extern int      evolution_size;
 
-window_T status_w, screen_w, game_w;
+window_T menu_w;
 int      top_space = 5;
 
-void game(window_T wind, int w, int h, int ncells) {
-  int screen_offset_y = 0, screen_offset_x = 0;
-  int cursor_offset_y = 0, cursor_offset_x = 0;
-  int in = 3;
-  int gen_step = 1;
-  int play = 0;
-  int gen = 1;
+void load_pattern(void);
+void save_pattern(void);
 
-  window_clear(wind);
-  game_w = window_center(wind, 0, h, w * 2);
+#define y_at(y) (y + screen_offset_y + h) % h + 1
+#define x_at(x) (x + screen_offset_x + w) % w + 1
+
+extern int screen_offset_x, screen_offset_y;
+extern int cursor_offset_x, cursor_offset_y;
+
+void game(int h, int w, char *name, int ncells) {
+  unsigned long int gen = 0;
+  int               gen_step = 1, play = 0, time_const = 100, time_step = 1;
+
+  window_T status_w, screen_w, game_w;
+
+  window_set_title(menu_w, NULL);
+  window_clear(menu_w);
+
+  status_w = window_split(menu_w, 1, 3, 0, "Status", name);
+  screen_w = window_sibiling(status_w);
+  game_w = window_center(screen_w, 0, h, w * 2, "Game");
 
   clock_t start_t, end_t = 0, total_t;
+
 redraw:;
   int CLINES = LINES, CCOLS = COLS;
+  int ph = window_height(game_w), pw = window_wight(game_w) / 2;
+  window_clear(game_w);
 
   while (TRUE) {
     start_t = clock();
-    display_game(game_w, mat, w, h, screen_offset_y, screen_offset_x,
-                 &cursor_offset_y, &cursor_offset_x);
+
+    display_status(status_w, gen, gen_step, h, w, play, time_const,
+                   y_at(cursor_offset_y), x_at(cursor_offset_x));
+    display_game(game_w, mat, h, w, ph, pw);
+
     if (play) {
       do_evolution(gen_step);
-      gen++;
+      gen += gen_step;
     }
 
-    while ((total_t = (long int)(end_t - start_t)) < TIME_CONST) {
+    while ((total_t = (long int)(end_t - start_t)) < time_const * TIME_MOD) {
       refresh();
       int c = getch();
       switch (c) {
+
+      // toggle pause
       case 'p':
       case 'P':
         play = !play;
         break;
+
+      // lead pattern
+      case 'l':
+      case 'L':
+        load_pattern();
+        window_set_title(screen_w, name);
+        goto redraw;
+        break;
+
+      // quit
       case 27:
+      case 'q':
+      case 'Q':
+        window_unsplit(menu_w);
         return;
+
+      // change num of evolutions before display
       case '+':
         gen_step++;
         break;
       case '-':
         gen_step--;
         break;
+
+      // change refreshrate
+      case ']':
+        time_const += time_step;
+        break;
+      case '[':
+        time_const -= time_step;
+        break;
+      }
+
+      if (!play) {
+        // move cursor around
+        switch (c) {
+        case 'w':
+        case 'W':
+          cursor_offset_y--;
+          break;
+        case 's':
+        case 'S':
+          cursor_offset_y++;
+          break;
+        case 'a':
+        case 'A':
+          cursor_offset_x--;
+          break;
+        case 'd':
+        case 'D':
+          cursor_offset_x++;
+          break;
+
+        // toggle cell
+        case ' ':
+          mat[y_at(cursor_offset_y)][x_at(cursor_offset_x)] += 1;
+          mat[y_at(cursor_offset_y)][x_at(cursor_offset_x)] %= ncells;
+          break;
+
+        // visual selection
+        case 'v':
+        case 'V':
+          display_select(game_w, mat, h, h);
+
+          // clear up the screen afterwards
+          window_set_title(menu_w, NULL);
+          window_clear(menu_w);
+          window_clear(screen_w);
+          window_clear(status_w);
+          window_clear(game_w);
+          break;
+        }
+      }
+
+      // move screen around
+      switch (c) {
       case KEY_A1:
       case KEY_C1:
       case KEY_END:
@@ -101,73 +188,47 @@ redraw:;
         screen_offset_y++;
       }
 
-      if (!play) {
-        switch (c) {
-        case 'w':
-        case 'W':
-          cursor_offset_y--;
-          break;
-        case 's':
-        case 'S':
-          cursor_offset_y++;
-          break;
-        case 'a':
-        case 'A':
-          cursor_offset_x--;
-          break;
-        case 'd':
-        case 'D':
-          cursor_offset_x++;
-          break;
-        case ' ':
-          mat[(cursor_offset_y + screen_offset_y + h) % h + 1]
-             [(cursor_offset_x + screen_offset_x + w) % w + 1] =
-                 (mat[(cursor_offset_y + screen_offset_y + h) % h + 1]
-                     [(cursor_offset_x + screen_offset_x + w) % w + 1] +
-                  1) %
-                 ncells;
-          break;
-        }
-      }
       screen_offset_x = (screen_offset_x + w) % w;
       screen_offset_y = (screen_offset_y + h) % h;
-      CLAMP(gen_step, 1, 10);
 
-      /* usleep(100000); */
+      CLAMP(cursor_offset_y, 0, ph - 1);
+      CLAMP(cursor_offset_x, 0, pw - 1);
+
+      CLAMP(gen_step, 1, 10);
+      CLAMP(time_const, 1, 1000);
+
       if (is_term_resized(CLINES, CCOLS)) {
         flushinp();
         HANDLE_RESIZE;
         goto redraw;
       }
-      end_t = clock(); // clock stopped
+      end_t = clock();
     }
     flushinp();
   }
 }
 
-struct imenu_T imenu_items[] = {
-    {"Unesi broj redova", 4, isdigit, NULL},
-    {"Unesi broj kolona", 4, isdigit, NULL},
-};
-int imenu_items_s = sizeof(imenu_items) / sizeof(struct imenu_T);
+void settings(char *pass, int index) {
+  struct imenu_T imenu_items[] = {
+      {   "Number of rows", 4, isdigit, NULL},
+      {"Number of columns", 4, isdigit, NULL},
+  };
+  int imenu_items_s = sizeof(imenu_items) / sizeof(struct imenu_T);
 
-void settings(window_T wind, char *pass, int index) {
-  while (TRUE) {
-    if (display_imenu(wind, imenu_items, imenu_items_s)) {
-      int row = atoi(imenu_items[0].buffer);
-      int column = atoi(imenu_items[1].buffer);
+  window_set_title(menu_w, "Game settings");
+  while (display_imenu(menu_w, imenu_items, imenu_items_s)) {
+    int row = atoi(imenu_items[0].buffer);
+    int column = atoi(imenu_items[1].buffer);
 
-      if (!row || !column)
-        continue;
+    if (!row || !column)
+      continue;
 
-      logic_init(column, row);
-      evolution_init(index);
+    logic_init(column, row);
+    evolution_init(index);
 
-      game(wind, row, column, evolution_cells[index]);
-      break;
-    } else {
-      break;
-    }
+    game(row, column, pass, evolution_cells[index]);
+    logic_free();
+    break;
   }
 
   for (int i = 0; i < imenu_items_s; i++) {
@@ -176,39 +237,83 @@ void settings(window_T wind, char *pass, int index) {
   }
 }
 
-void mode_select(window_T wind, char *pass, int index) {
+void mode_select(char *pass, int index) {
   struct menu_T *mode_items = malloc(evolution_size * sizeof(struct menu_T));
   for (int i = 0; i < evolution_size; i++) {
     mode_items[i].name = evolution_names[i];
     mode_items[i].callback = settings;
   }
-  display_menu(wind, mode_items, evolution_size);
+  display_menu(menu_w, "Game Mode", mode_items, evolution_size);
 
   free(mode_items);
 }
 
-void load(window_T wind, char *pass, int index) {
+void new_file(char *pass, int index) {
+  struct imenu_T new_file_items[] = {
+      {"Pick a name", 10, isalnum, NULL},
+  };
+  int new_file_items_s = sizeof(new_file_items) / sizeof(struct imenu_T);
+
+  window_set_title(menu_w, "New File");
+  while (display_imenu(menu_w, new_file_items, new_file_items_s)) {
+    file_save_pattern(new_file_items[0].buffer, index);
+    break;
+  }
+
+  for (int i = 0; i < new_file_items_s; i++) {
+    free(new_file_items[i].buffer);
+    new_file_items[i].buffer = NULL;
+  }
+}
+
+struct menu_T *file_menu_list(char *ext, void (*callback)(char *, int),
+                              int offset, int *size) {
   char **buffer;
   int    n;
 
   load_files();
-  n = file_select("all", &buffer);
+  n = file_select("part", &buffer);
 
-  struct menu_T *file_items = malloc(n * sizeof(struct menu_T));
+  struct menu_T *file_items = malloc((n + offset) * sizeof(struct menu_T));
   for (int i = 0; i < n; i++) {
-    file_items[i].name = buffer[i];
-    file_items[i].callback = load_file;
+    file_items[i + offset].name = buffer[i];
+    file_items[i + offset].callback = callback;
   }
   free(buffer);
 
-  display_menu(wind, file_items, n);
-  mode_select(wind, "nothing", 0);
-
-  free(file_items);
-  free_files();
+  *size = n + offset;
+  return file_items;
 }
 
-void exitp(window_T wind, char *pass, int index) {
+void save_pattern(void) {
+  int            n;
+  struct menu_T *file_items = file_menu_list("part", file_save_pattern, 1, &n);
+  file_items[0].name = "NEW";
+  file_items[0].callback = new_file;
+
+  display_menu(menu_w, "Save Pattern", file_items, n);
+  free(file_items);
+}
+
+void load_pattern(void) {
+  int            n;
+  struct menu_T *file_items = file_menu_list("part", file_load_pattern, 0, &n);
+
+  display_menu(menu_w, "Load Pattern", file_items, n);
+  free(file_items);
+}
+
+void load(char *pass, int index) {
+  int            n;
+  struct menu_T *file_items = file_menu_list("part", file_load, 0, &n);
+
+  display_menu(menu_w, "Load Game", file_items, n);
+  free(file_items);
+
+  mode_select("nothing", 0);
+}
+
+void exitp(char *pass, int index) {
   display_stop();
   exit(0);
 }
@@ -226,24 +331,26 @@ int state = 0;
 int main(void) {
   setlocale(LC_ALL, "");
 
-  if (!display_start()) {
-    printf("Couldn't start the display!\n");
-  }
-
   if (!file_setup()) {
     printf("File setup error\n");
+    abort();
   }
 
-  status_w = window_split(MAIN_w, 1, 3, 0);
-  screen_w = window_sibiling(status_w);
+  if (!display_start()) {
+    printf("Couldn't start the display!\n");
+    abort();
+  }
 
+  menu_w = MAIN_w;
   while (TRUE) {
-    display_menu(screen_w, menu_items, menu_items_s);
-    window_clear(screen_w);
+    display_menu(menu_w, "Main menu", menu_items, menu_items_s);
   }
+
+  window_free(MAIN_w);
 
   if (!display_stop()) {
     printf("Couldn't stop the display!\n");
+    abort();
   }
 
   return 0;

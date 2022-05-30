@@ -17,7 +17,8 @@ OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
 all: $(BIN)
 debug: CFLAGS +=-ggdb -Wall
-debug: ${BIN}
+NO_UNICODE: CFLAGS += -D NO_UNICODE
+NO_UNICODE debug: ${BIN}
 
 $(BIN): $(OBJS)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
@@ -33,4 +34,4 @@ clean:
 	rm -f $(BIN) $(OBJS)
 endif
 
-.PHONY: all clean debug
+.PHONY: all clean debug NO_UNICODE

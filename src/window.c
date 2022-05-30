@@ -21,17 +21,24 @@ struct T {
 
   int param[4];
   int mod[3];
+
+  char *title;
 };
 
-void WINDOW_init(WINDOW *win) {
+void WINDOW_init(WINDOW *win, char *title) {
   window_settings(win);
+  wattrset(win, COLOR_PAIR(0));
   box(win, ACS_VLINE, ACS_HLINE);
+  if (title) {
+    mvwprintw(win, 0, 1, "%s", title);
+  }
   wrefresh(win);
 }
 
-void WINDOW_new(T self) {
-  self->win = newwin(H(self), W(self), Y(self), X(self));
-  WINDOW_init(self->win);
+WINDOW *WINDOW_new(T self) {
+  WINDOW *win = newwin(H(self), W(self), Y(self), X(self));
+  WINDOW_init(win, self->title);
+  return win;
 }
 
 T window_new(void) {
@@ -40,6 +47,7 @@ T window_new(void) {
   self->c1 = NULL;
   self->c2 = NULL;
   self->sibiling = NULL;
+  self->title = NULL;
   H(self) = 0;
   W(self) = 0;
   Y(self) = 0;
@@ -52,11 +60,11 @@ int     window_height(T self) { return H(self) - 2; }
 int     window_wight(T self) { return W(self) - 2; }
 WINDOW *window_win(T self) { return self->win; }
 
-T window_init(T self) {
+void window_set_title(T self, char *title) { self->title = title; }
 
+T window_init(T self) {
   self->win = stdscr;
-  box(self->win, ACS_VLINE, ACS_HLINE);
-  wrefresh(self->win);
+  WINDOW_init(stdscr, self->title);
   H(self) = LINES;
   W(self) = COLS;
   return self;
@@ -69,6 +77,13 @@ void window_free(T self) {
   window_free(self->c2);
   delwin(self->win);
   free(self);
+}
+
+void window_unsplit(T self) {
+  window_free(self->c1);
+  window_free(self->c2);
+  self->c1 = NULL;
+  self->c2 = NULL;
 }
 
 void window_calc_children(T self) {
@@ -129,7 +144,12 @@ void window_calc_children(T self) {
   }
 }
 
-T window_split(T self, int hor, int a, int b) {
+T window_split(T self, int hor, int a, int b, char *name1, char *name2) {
+  if (self->c1)
+    window_free(self->c1);
+  if (self->c2)
+    window_free(self->c2);
+
   self->c1 = window_new();
   self->c2 = window_new();
 
@@ -142,13 +162,16 @@ T window_split(T self, int hor, int a, int b) {
 
   window_calc_children(self);
 
-  WINDOW_new(self->c1);
-  WINDOW_new(self->c2);
+  self->c1->title = name1;
+  self->c2->title = name2;
+
+  self->c1->win = WINDOW_new(self->c1);
+  self->c2->win = WINDOW_new(self->c2);
 
   return self->c1;
 }
 
-T window_center(T self, int tmp, int h, int w) {
+T window_center(T self, int tmp, int h, int w, char *name) {
   self->c1 = window_new();
   self->c2 = NULL;
 
@@ -157,7 +180,9 @@ T window_center(T self, int tmp, int h, int w) {
   self->mod[2] = w;
 
   window_calc_children(self);
-  WINDOW_new(self->c1);
+
+  self->c1->title = name;
+  self->c1->win = WINDOW_new(self->c1);
 
   return self->c1;
 }
@@ -169,19 +194,19 @@ void window_update_children(T self) {
   window_calc_children(self);
 
   delwin(self->c1->win);
-  WINDOW_new(self->c1);
+  self->c1->win = WINDOW_new(self->c1);
   window_update_children(self->c1);
 
   if (self->c2 != NULL) {
     delwin(self->c2->win);
-    WINDOW_new(self->c2);
+    self->c2->win = WINDOW_new(self->c2);
     window_update_children(self->c2);
   }
 }
 
 void window_clear(T self) {
   wclear(self->win);
-  WINDOW_init(self->win);
+  WINDOW_init(self->win, self->title);
 }
 
 void window_settings(WINDOW *win) { keypad(win, TRUE); }

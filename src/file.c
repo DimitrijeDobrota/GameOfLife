@@ -130,6 +130,16 @@ int file_select(char *ext, char ***buffer) {
   return size;
 }
 
-void load_files(void) { loaded_files = file_fromDirectory(); }
+void load_files(void) {
+  if (loaded_files)
+    file_free(loaded_files);
+  loaded_files = file_fromDirectory();
+}
+
 void free_files(void) { file_free(loaded_files); }
-void load_file(window_T win, char *pass, int index) { (void)3; }
+
+// Comming soon...
+void file_load_pattern(char *name, int index) { return; }
+void file_save_pattern(char *name, int index) { return; }
+void file_load(char *name, int index) { return; }
+void file_save(char *name, int index) { return; }

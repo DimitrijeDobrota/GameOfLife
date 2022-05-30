@@ -15,13 +15,11 @@
   {                                                                            \
     resize_term(0, 0);                                                         \
     handle_winch(10);                                                          \
-    goto redraw;                                                               \
   }
 #else
 #define HANDLE_RESIZE                                                          \
   {                                                                            \
     handle_winch(10);                                                          \
-    goto redraw;                                                               \
   }
 #endif
 #endif
