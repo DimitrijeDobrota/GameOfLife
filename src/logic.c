@@ -6,7 +6,7 @@
 
 cell **mat;
 char  *evolution_names[] = {"Normal", "CoExsistance", "Predator", "Virus",
-                           "Unknown"};
+                            "Unknown"};
 int    evolution_cells[] = {2, 3, 3, 3, 3};
 int    evolution_size = 5;
 
@@ -22,6 +22,7 @@ void addToECells(int a, int b) {
       if (i != a || j != b)
         mat[i][j] += mod;
 }
+
 void addToCells(int i, int j) {
   mod = (mat[i][j] & 3);
   mod <<= mod << 1;
@@ -39,7 +40,7 @@ void doAdditions(void) {
     addToECells(height + 1, j);
   }
 
-  for (int i = 1; i < height; i++) {
+  for (int i = 1; i <= height; i++) {
     mat[i][0] = mat[i][width];
     mat[i][width + 1] = mat[i][1];
     addToECells(i, 0);
@@ -85,14 +86,15 @@ void evolveCoExist(void) {
     for (int j = 1; j <= width; j++) {
       s2 = mat[i][j] >> 5;
       s1 = (mat[i][j] & 31) >> 2;
-      if ((mat[i][j] & 3) == 0) {
+      mod = mat[i][j] & 3;
+      if (mod == 0) {
         if ((s1 + s2) == 3) {
           if (mat[i][j] >= 64)
             mat[i][j] = 2;
           else
             mat[i][j] = 1;
+          continue;
         }
-        continue;
       }
       if ((s1 + s2) < 2 || (s1 + s2) > 3) {
         mat[i][j] = 0;
@@ -122,11 +124,14 @@ void evolvePredator(void) {
             mat[i][j] = 2;
           else
             mat[i][j] = 1;
+          continue;
         }
         break;
       case 1:
-        if (s2 > 0)
+        if (s2 > 0) {
           mat[i][j] = 0;
+          continue;
+        }
         break;
       }
       mat[i][j] = mod;
@@ -153,11 +158,14 @@ void evolveVirus(void) {
             mat[i][j] = 2;
           else
             mat[i][j] = 1;
+          continue;
         }
         break;
       case 1:
-        if (s2 > 0)
+        if (s2 > 0) {
           mat[i][j] = 2;
+          continue;
+        }
         break;
       }
       mat[i][j] = mod;
