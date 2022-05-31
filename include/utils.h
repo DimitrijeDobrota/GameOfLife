@@ -22,4 +22,8 @@
     handle_winch(10);                                                          \
   }
 #endif
+
+#define MAX_SCREEN_H 512
+#define MAX_SCREEN_W 1888
+
 #endif

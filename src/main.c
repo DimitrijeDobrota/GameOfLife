@@ -21,7 +21,6 @@
 #endif
 
 extern window_T MAIN_w;
-extern cell   **mat;
 extern char    *evolution_names[];
 extern int      evolution_cells[];
 extern int      evolution_size;
@@ -32,15 +31,18 @@ int      top_space = 5;
 void load_pattern(void);
 void save_pattern(void);
 
-#define y_at(y) (y + screen_offset_y + h) % h + 1
-#define x_at(x) (x + screen_offset_x + w) % w + 1
+#define y_at(y) (y + screen_offset_y + h) % h
+#define x_at(x) (x + screen_offset_x + w) % w
 
 extern int screen_offset_x, screen_offset_y;
 extern int cursor_offset_x, cursor_offset_y;
 
+extern short int **mat;
+
 void game(int h, int w, char *name, int ncells) {
   unsigned long int gen = 0;
   int               gen_step = 1, play = 0, time_const = 100, time_step = 1;
+  int               expanded;
 
   window_T status_w, screen_w, game_w;
 
@@ -53,21 +55,54 @@ void game(int h, int w, char *name, int ncells) {
 
   clock_t start_t, end_t = 0, total_t;
 
+  screen_offset_x = screen_offset_y = 0;
+
+  cursor_offset_y = window_height(game_w) / 2;
+  cursor_offset_x = window_wight(game_w) / 4;
+
 redraw:;
-  int CLINES = LINES, CCOLS = COLS;
-  int ph = window_height(game_w), pw = window_wight(game_w) / 2;
+  int     CLINES = LINES, CCOLS = COLS;
+  int     ph = window_height(game_w), pw = window_wight(game_w) / 2;
+  WINDOW *game_W = window_win(game_w);
+
+  window_clear(menu_w);
+  window_clear(screen_w);
+  window_clear(status_w);
   window_clear(game_w);
+
+  CLAMP(cursor_offset_y, 0, ph - 1);
+  CLAMP(cursor_offset_x, 0, pw - 1);
+
+  display_game(game_W, h, w, ph, pw, 1);
+  display_cursor(game_W, h, w, ph, pw);
+
+  int screen_change = 0;
+  int cursor_change = 0;
 
   while (TRUE) {
     start_t = clock();
 
-    display_status(status_w, gen, gen_step, h, w, play, time_const,
-                   y_at(cursor_offset_y), x_at(cursor_offset_x));
-    display_game(game_w, mat, h, w, ph, pw);
-
     if (play) {
-      do_evolution(gen_step);
+      expanded = do_evolution(gen_step);
+      screen_change = 1;
+
+      screen_offset_x += expanded;
+      screen_offset_y += expanded;
       gen += gen_step;
+    }
+
+    display_status(status_w, gen, gen_step, h, w, play, time_const,
+                   y_at(cursor_offset_y), x_at(cursor_offset_x), expanded);
+
+    if (play || screen_change) {
+      display_game(game_W, h, w, ph, pw, 0);
+      screen_change = 0;
+      cursor_change = 1;
+    }
+
+    if (cursor_change) {
+      display_cursor(game_W, h, w, ph, pw);
+      cursor_change = 0;
     }
 
     while ((total_t = (long int)(end_t - start_t)) < time_const * TIME_MOD) {
@@ -85,7 +120,9 @@ redraw:;
       case 'l':
       case 'L':
         load_pattern();
+
         window_set_title(screen_w, name);
+        window_set_title(menu_w, NULL);
         goto redraw;
         break;
 
@@ -119,37 +156,37 @@ redraw:;
         case 'w':
         case 'W':
           cursor_offset_y--;
+          cursor_change = 1;
           break;
         case 's':
         case 'S':
           cursor_offset_y++;
+          cursor_change = 1;
           break;
         case 'a':
         case 'A':
           cursor_offset_x--;
+          cursor_change = 1;
           break;
         case 'd':
         case 'D':
           cursor_offset_x++;
+          cursor_change = 1;
           break;
 
         // toggle cell
         case ' ':
-          mat[y_at(cursor_offset_y)][x_at(cursor_offset_x)] += 1;
-          mat[y_at(cursor_offset_y)][x_at(cursor_offset_x)] %= ncells;
+          toggleAt(y_at(cursor_offset_y), x_at(cursor_offset_x));
+          cursor_change = 1;
           break;
 
         // visual selection
         case 'v':
         case 'V':
-          display_select(game_w, mat, h, h);
+          display_select(game_w, h, h);
 
-          // clear up the screen afterwards
           window_set_title(menu_w, NULL);
-          window_clear(menu_w);
-          window_clear(screen_w);
-          window_clear(status_w);
-          window_clear(game_w);
+          goto redraw;
           break;
         }
       }
@@ -162,6 +199,7 @@ redraw:;
       case KEY_HOME:
       case KEY_LEFT:
         screen_offset_x--;
+        screen_change = 1;
         break;
       case KEY_A3:
       case KEY_C3:
@@ -169,6 +207,7 @@ redraw:;
       case KEY_PPAGE:
       case KEY_RIGHT:
         screen_offset_x++;
+        screen_change = 1;
         break;
       }
 
@@ -179,6 +218,7 @@ redraw:;
       case KEY_PPAGE:
       case KEY_UP:
         screen_offset_y--;
+        screen_change = 1;
         break;
       case KEY_C1:
       case KEY_C3:
@@ -186,6 +226,7 @@ redraw:;
       case KEY_END:
       case KEY_NPAGE:
         screen_offset_y++;
+        screen_change = 1;
       }
 
       screen_offset_x = (screen_offset_x + w) % w;
@@ -194,8 +235,8 @@ redraw:;
       CLAMP(cursor_offset_y, 0, ph - 1);
       CLAMP(cursor_offset_x, 0, pw - 1);
 
-      CLAMP(gen_step, 1, 10);
-      CLAMP(time_const, 1, 1000);
+      CLAMP(gen_step, 1, 100);
+      CLAMP(time_const, 0, 1000);
 
       if (is_term_resized(CLINES, CCOLS)) {
         flushinp();
@@ -210,8 +251,8 @@ redraw:;
 
 void settings(char *pass, int index) {
   struct imenu_T imenu_items[] = {
-      {   "Number of rows", 4, isdigit, NULL},
-      {"Number of columns", 4, isdigit, NULL},
+      {   "Number of rows", 6, isdigit, NULL},
+      {"Number of columns", 6, isdigit, NULL},
   };
   int imenu_items_s = sizeof(imenu_items) / sizeof(struct imenu_T);
 
@@ -223,7 +264,7 @@ void settings(char *pass, int index) {
     if (!row || !column)
       continue;
 
-    logic_init(column, row);
+    logic_init(column, row, 1);
     evolution_init(index);
 
     game(row, column, pass, evolution_cells[index]);

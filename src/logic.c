@@ -20,11 +20,14 @@ int WIDTH, HEIGHT;
 int cells_size;
 int temp_size;
 int counter;
+int isExpanding;
 
 char *evolution_names[] = {"Normal", "CoExsistance", "Predator", "Virus",
                            "Unknown"};
 int   evolution_cells[] = {2, 3, 3, 3, 3};
 int   evolution_size = 5;
+int   toggle_mod = 2;
+
 static void (*evolve)(void);
 static void (*addToCells)(int i, int j, int value);
 
@@ -78,28 +81,30 @@ void addToCellsWrap(int i, int j, int value) {
     break;
   }
 
-  for (int k = (i - 1 + HEIGHT) % HEIGHT; k <= (i + 1 + HEIGHT) % HEIGHT; k++) {
-    for (int l = (j - 1 + WIDTH) % WIDTH; l <= (j + 1 + WIDTH) % WIDTH; l++) {
+  for (int k = i - 1; k <= i + 1; k++) {
+    for (int l = j - 1; l <= j + 1; l++) {
+      int a = (k + HEIGHT) % HEIGHT;
+      int b = (l + WIDTH) % WIDTH;
       for (int m = 0; m < temp_size; m++)
-        if (temp_cells[m].row == k && temp_cells[m].col == l) {
+        if (temp_cells[m].row == a && temp_cells[m].col == b) {
           temp_cells[m].val += mod;
-          if (k == i && l == j) {
+          if (a == i && b == j) {
             temp_cells[m].val -= mod;
             temp_cells[m].val += value;
           }
           goto Kontinue;
         }
 
-      if (k == i && l == j) {
+      if (a == i && b == j) {
         temp_cells[temp_size].val = value;
-        temp_cells[temp_size].row = k;
-        temp_cells[temp_size].col = l;
+        temp_cells[temp_size].row = a;
+        temp_cells[temp_size].col = b;
         temp_size++;
         continue;
       }
       temp_cells[temp_size].val = mod;
-      temp_cells[temp_size].row = k;
-      temp_cells[temp_size].col = l;
+      temp_cells[temp_size].row = a;
+      temp_cells[temp_size].col = b;
       temp_size++;
     Kontinue:
       continue;
@@ -302,6 +307,26 @@ static void (*evolution_modes[])() = {
 static void (*addition_modes[])(int i, int j, int value) = {addToCellsNormal,
                                                             addToCellsWrap};
 
+int shouldExpand(void) {
+  for (int i = 0; i < cells_size; i++) {
+    if (cells[i].row == 0 || cells[i].row == HEIGHT - 1 || cells[i].col == 0 ||
+        cells[i].col == WIDTH - 1) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void expandMatrix(int size) {
+  WIDTH += 2 * size;
+  HEIGHT += 2 * size;
+  cells = realloc(cells, WIDTH * HEIGHT * sizeof(*cells));
+  for (int cellIndex = 0; cellIndex < cells_size; cellIndex++) {
+    cells[cellIndex].row += size;
+    cells[cellIndex].col += size;
+  }
+}
+
 int do_evolution(int steps) {
   int times_resized = 0;
   counter = 0;
@@ -310,8 +335,8 @@ int do_evolution(int steps) {
     temp_size = 0;
     temp_cells = calloc(temp_alloc, sizeof(*temp_cells));
     if (!counter) {
-      if (shouldExpand()) {
-        expand_matrix(SIZE_TO_EXPAND);
+      if (isExpanding && shouldExpand()) {
+        expandMatrix(SIZE_TO_EXPAND);
         times_resized++;
         counter = SIZE_TO_EXPAND;
       } else {
@@ -329,10 +354,9 @@ int do_evolution(int steps) {
 int logic_init(int w, int h, int isWrapping) {
   WIDTH = w;
   HEIGHT = h;
-  addToCells = addition_modes[0];
-  if (isWrapping) {
-    addToCells = addition_modes[1];
-  }
+
+  addToCells = addition_modes[isWrapping];
+  isExpanding = !isWrapping;
 
   cells = malloc(WIDTH * HEIGHT * sizeof(*cells));
   return 1;
@@ -340,27 +364,8 @@ int logic_init(int w, int h, int isWrapping) {
 
 int evolution_init(int index) {
   evolve = evolution_modes[index];
+  toggle_mod = evolution_cells[index];
   return 1;
-}
-
-int shouldExpand(void) {
-  for (int i = 0; i < cells_size; i++) {
-    if (cells[i].row == 0 || cells[i].row == HEIGHT - 1 || cells[i].col == 0 ||
-        cells[i].col == WIDTH - 1) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-void expand_matrix(int size) {
-  WIDTH += 2 * size;
-  HEIGHT += 2 * size;
-  cells = realloc(cells, WIDTH * HEIGHT * sizeof(*cells));
-  for (int cellIndex = 0; cellIndex < cells_size; cellIndex++) {
-    cells[cellIndex].row += size;
-    cells[cellIndex].col += size;
-  }
 }
 
 int logic_free(void) {
@@ -368,10 +373,10 @@ int logic_free(void) {
   return 1;
 }
 
-void toggleAt(int i, int j) {
+int toggleAt(int i, int j) {
   for (int k = 0; k < cells_size; k++) {
     if (cells[k].row == i && cells[k].col == j) {
-      cells[k].val = (cells[k].val + 1) % 3;
+      cells[k].val = (cells[k].val + 1) % toggle_mod;
       if (cells[k].val == 0) {
         for (int t = k + 1; t < cells_size; t++) {
           cells[t - 1].val = cells[t].val;
@@ -379,14 +384,16 @@ void toggleAt(int i, int j) {
           cells[t - 1].col = cells[t].col;
         }
         cells_size--;
+        return 0; // since the cell was deleted it's value is 0
       }
-      return;
+      return cells[k].val; // only return value if it hasn't been deleted
     }
   }
   cells[cells_size].val = 1;
   cells[cells_size].row = i;
   cells[cells_size].col = j;
   cells_size++;
+  return 1;
 }
 
 void deleteAt(int i, int j) {
@@ -403,6 +410,13 @@ void deleteAt(int i, int j) {
   }
 }
 
+int getAt(int i, int j) {
+  for (int k = 0; k < cells_size; k++)
+    if (cells[k].row == i && cells[k].col == j)
+      return cells[k].val;
+  return 0;
+}
+
 int getNext(int *row, int *col, int *value, int reset) {
   static int index = 0;
   if (reset) {
@@ -417,4 +431,5 @@ int getNext(int *row, int *col, int *value, int reset) {
   *col = cells[index].col;
   *value = cells[index].val;
   index++;
+  return 1;
 }
