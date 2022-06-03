@@ -13,7 +13,7 @@
 #define window_T T
 typedef struct T *T;
 
-struct T {
+struct window_T {
   WINDOW *win;
   T       c1;
   T       c2;
@@ -205,7 +205,7 @@ void window_update_children(T self) {
 }
 
 void window_clear(T self) {
-  wclear(self->win);
+  werase(self->win);
   WINDOW_init(self->win, self->title);
 }
 

@@ -7,7 +7,7 @@ extern int   evolution_size;
 
 int  logic_init(int w, int h, int isWrapping);
 int  evolution_init(int index);
-int  do_evolution(int steps);
+void  do_evolution(int steps);
 int  logic_free(void);
 int toggleAt(int i, int j);
 int  getAt(int i, int j);

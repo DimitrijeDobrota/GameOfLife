@@ -18,12 +18,12 @@
 #define CHAR_SQUARED    "\u2B1C"
 #define CHAR_CIRCLE_DOT "\u2299"
 
-#define CHAR_ACTIVE CHAR_SQUARE
+#define CHAR_ACTIVE CHAR_CIRCLE
 
 window_T MAIN_w = NULL;
 
-#define y_at(y) (y + screen_offset_y + h) % h
-#define x_at(x) (x + screen_offset_x + w) % w
+#define y_at(y) y, screen_offset_y, h
+#define x_at(x) x, screen_offset_x, w
 
 #define for_each_cell(start_i, end_i, start_j, end_j)                          \
   for (int i = start_i; i < end_i; i++)                                        \
@@ -51,7 +51,7 @@ window_T MAIN_w = NULL;
   for (int i = start_i; i < end_i; i++) {                                      \
     wmove(win, i + 1, 1 + start_j * 2);                                        \
     for (int j = start_j; j < end_j; j++) {                                    \
-      int val = getAt(y_at(i), x_at(j));                                       \
+      int val = getAt(cord(y_at(i)), cord(x_at(j)));                           \
       wattrset(win, COLOR_PAIR(val + color_offset));                           \
       print_cell(win, blank);                                                  \
     }                                                                          \
@@ -60,25 +60,34 @@ window_T MAIN_w = NULL;
 int screen_offset_x, screen_offset_y;
 int cursor_offset_x, cursor_offset_y;
 
-int get_screen_position(int value, int screen_offset, int screen_size,
+int (*cord)(int, int, int);
+
+int get_screen_position(int wrap, int value, int screen_offset, int screen_size,
                         int board_size) {
   int overshoot = screen_offset + screen_size - board_size;
-  if (overshoot > 0) {
-    if (value < screen_offset && value > overshoot)
-      return -1;
-    if (value >= screen_offset) {
-      return value - screen_offset;
+
+  if (wrap) {
+    if (overshoot > 0) {
+      if (value < screen_offset && value >= overshoot)
+        return -1;
+      if (value >= screen_offset) {
+        return value - screen_offset;
+      } else {
+        return value + screen_size - overshoot;
+      }
     } else {
-      return value + screen_size - overshoot;
+      if (value < screen_offset || value >= screen_offset + screen_size)
+        return -2;
+      return value - screen_offset;
     }
   } else {
-    if (value < screen_offset || value > screen_offset + screen_size)
-      return -1;
+    if (value < screen_offset || value >= screen_offset + screen_size)
+      return -3;
     return value - screen_offset;
   }
 }
 
-void display_game(WINDOW *win, int h, int w, int ph, int pw, int redraw) {
+void display_game(WINDOW *win, int h, int w, int ph, int pw, int wrap) {
   werase(win);
 
   wattrset(win, COLOR_PAIR(0));
@@ -86,12 +95,13 @@ void display_game(WINDOW *win, int h, int w, int ph, int pw, int redraw) {
 
   int row, col, val;
   getNext(&row, &col, &val, 1);
+  int i = 0;
   while (getNext(&row, &col, &val, 0)) {
     wattrset(win, COLOR_PAIR(val + 2));
 
-    if ((row = get_screen_position(row, screen_offset_y, ph, h)) == -1)
+    if ((row = get_screen_position(wrap, row, screen_offset_y, ph, h)) < 0)
       continue;
-    if ((col = get_screen_position(col, screen_offset_x, pw, w)) == -1)
+    if ((col = get_screen_position(wrap, col, screen_offset_x, pw, w)) < 0)
       continue;
 
     mvprint_cell(win, row, col, 2, CHAR_BLANK);
@@ -104,10 +114,10 @@ void display_cursor(WINDOW *win, int h, int w, int ph, int pw) {
   static int prev_x = 0, prev_y = 0;
   int        val;
 
-  val = getAt(y_at(prev_y), x_at(prev_x));
+  val = getAt(cord(y_at(prev_y)), cord(x_at(prev_x)));
   mvprint_cell(win, prev_y, prev_x, 2, CHAR_BLANK);
 
-  val = getAt(y_at(cursor_offset_y), x_at(cursor_offset_x));
+  val = getAt(cord(y_at(cursor_offset_y)), cord(x_at(cursor_offset_x)));
   mvprint_cell(win, cursor_offset_y, cursor_offset_x, 5, CHAR_CURSOR);
   wrefresh(win);
 
@@ -115,9 +125,10 @@ void display_cursor(WINDOW *win, int h, int w, int ph, int pw) {
   prev_x = cursor_offset_x;
 }
 
-void display_select(window_T wind, int w, int h) {
+int display_select(window_T wind, int w, int h) {
   int current_offset_y = cursor_offset_y;
   int current_offset_x = cursor_offset_x;
+  int ret_value = 1;
 
 redraw:;
   int CLINES = LINES, CCOLS = COLS;
@@ -143,7 +154,7 @@ redraw:;
       delwin(new);
       HANDLE_RESIZE;
       ph = window_height(wind), pw = window_wight(wind) / 2;
-      display_game(win, w, h, ph, pw, 1);
+      /* display_game(win, w, h, ph, pw); */
       goto redraw;
     }
 
@@ -171,19 +182,19 @@ redraw:;
     case 'x':
     case 'X':
       for_each_cell(start_i, end_i + 1, start_j, end_j + 1)
-          deleteAt(y_at(i), x_at(j));
+          deleteAt(cord(y_at(i)), cord(x_at(j)));
       goto end;
 
     // toggle selection
     case 't':
     case 'T':
       for_each_cell(start_i, end_i + 1, start_j, end_j + 1)
-          toggleAt(y_at(i), x_at(j));
+          toggleAt(cord(y_at(i)), cord(x_at(j)));
       goto end;
 
     // confirm and save slection
     case '\n':
-      save_pattern();
+      ret_value = 100;
       goto end;
 
     // quit
@@ -206,21 +217,23 @@ redraw:;
 end:;
   nodelay(stdscr, 1);
   delwin(new);
-  return;
+  return ret_value;
 }
 
 void display_status(window_T wind, unsigned long int gen, int gen_step,
-                    int height, int wight, int play, int dt, int cursor_y,
-                    int cursor_x, int expanded) {
+                    int wrap, int height, int wight, int play, int dt,
+                    int cursor_y, int cursor_x) {
   WINDOW *win = window_win(wind);
 
   wmove(win, 1, 1);
   wprintw(win, " | %5s | ", play ? "play" : "pause");
-  wprintw(win, "Size: %dx%d | ", height, wight);
+  if(wrap)
+    wprintw(win, "Size: %dx%d | ", height, wight);
+  else
+    wprintw(win, "Size: unlimited | ");
   wprintw(win, "Generation: %10lu(+%d) | ", gen, gen_step);
   wprintw(win, "dt: %4dms | ", dt);
   wprintw(win, "Cursor: %4dx%-4d | ", cursor_y, cursor_x);
-  wprintw(win, "Expanded: %4d | ", expanded);
   wrefresh(win);
 }
 

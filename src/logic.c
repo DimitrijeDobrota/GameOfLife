@@ -31,6 +31,13 @@ int   toggle_mod = 2;
 static void (*evolve)(void);
 static void (*addToCells)(int i, int j, int value);
 
+void insert(int row, int col, int value) {
+  temp_cells[temp_size].val = value;
+  temp_cells[temp_size].row = row;
+  temp_cells[temp_size].col = col;
+  temp_size++;
+}
+
 void addToCellsNormal(int i, int j, int value) {
   int mod = 0;
   switch (value) {
@@ -54,16 +61,10 @@ void addToCellsNormal(int i, int j, int value) {
         }
 
       if (k == i && l == j) {
-        temp_cells[temp_size].val = value;
-        temp_cells[temp_size].row = k;
-        temp_cells[temp_size].col = l;
-        temp_size++;
+        insert(k, l, value);
         continue;
       }
-      temp_cells[temp_size].val = mod;
-      temp_cells[temp_size].row = k;
-      temp_cells[temp_size].col = l;
-      temp_size++;
+      insert(k, l, mod);
     Kontinue:
       continue;
     }
@@ -96,16 +97,10 @@ void addToCellsWrap(int i, int j, int value) {
         }
 
       if (a == i && b == j) {
-        temp_cells[temp_size].val = value;
-        temp_cells[temp_size].row = a;
-        temp_cells[temp_size].col = b;
-        temp_size++;
+        insert(a, b, value);
         continue;
       }
-      temp_cells[temp_size].val = mod;
-      temp_cells[temp_size].row = a;
-      temp_cells[temp_size].col = b;
-      temp_size++;
+      insert(a, b, mod);
     Kontinue:
       continue;
     }
@@ -307,48 +302,14 @@ static void (*evolution_modes[])() = {
 static void (*addition_modes[])(int i, int j, int value) = {addToCellsNormal,
                                                             addToCellsWrap};
 
-int shouldExpand(void) {
-  for (int i = 0; i < cells_size; i++) {
-    if (cells[i].row == 0 || cells[i].row == HEIGHT - 1 || cells[i].col == 0 ||
-        cells[i].col == WIDTH - 1) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-void expandMatrix(int size) {
-  WIDTH += 2 * size;
-  HEIGHT += 2 * size;
-  cells = realloc(cells, WIDTH * HEIGHT * sizeof(*cells));
-  for (int cellIndex = 0; cellIndex < cells_size; cellIndex++) {
-    cells[cellIndex].row += size;
-    cells[cellIndex].col += size;
-  }
-}
-
-int do_evolution(int steps) {
-  int times_resized = 0;
-  counter = 0;
+void do_evolution(int steps) {
   while (steps--) {
     int temp_alloc = 9 * cells_size;
     temp_size = 0;
     temp_cells = calloc(temp_alloc, sizeof(*temp_cells));
-    if (!counter) {
-      if (isExpanding && shouldExpand()) {
-        expandMatrix(SIZE_TO_EXPAND);
-        times_resized++;
-        counter = SIZE_TO_EXPAND;
-      } else {
-        counter = 1;
-      }
-    }
     evolve();
     free(temp_cells);
-    counter--;
   }
-  counter = 0;
-  return times_resized * SIZE_TO_EXPAND;
 }
 
 int logic_init(int w, int h, int isWrapping) {
@@ -356,9 +317,9 @@ int logic_init(int w, int h, int isWrapping) {
   HEIGHT = h;
 
   addToCells = addition_modes[isWrapping];
-  isExpanding = !isWrapping;
 
   cells = malloc(WIDTH * HEIGHT * sizeof(*cells));
+  cells_size = 0;
   return 1;
 }
 
@@ -370,6 +331,13 @@ int evolution_init(int index) {
 
 int logic_free(void) {
   free(cells);
+  cells = NULL;
+
+  HEIGHT = -1;
+  WIDTH = -1;
+  addToCells = NULL;
+  evolve = NULL;
+  toggle_mod = -1;
   return 1;
 }
 

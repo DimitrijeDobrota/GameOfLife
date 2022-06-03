@@ -28,11 +28,11 @@ int display_stop(void);
 
 void display_menu(window_T wind, char *name, struct menu_T *items, int size);
 int  display_imenu(window_T wind, struct imenu_T *items, int size);
-void display_game(WINDOW *win, int h, int w, int ph, int pw, int redraw);
-void display_select(window_T wind, int w, int h);
+void display_game(WINDOW *win, int h, int w, int ph, int pw, int wrap);
+int  display_select(window_T wind, int w, int h);
 void display_status(window_T wind, unsigned long int generation, int gen_step,
-                    int height, int wight, int play, int dt, int cursor_y,
-                    int cursor_x, int expanded);
+                    int wrap, int height, int wight, int play, int dt,
+                    int cursor_y, int cursor_x);
 void display_cursor(WINDOW *win, int h, int w, int ph, int pw);
 
 void handle_winch(int sig);
