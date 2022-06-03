@@ -1,24 +1,40 @@
-CC=gcc
-CFLAGS = -I include
+# GNU Makefile for Game of Life simulation
+#
+# Usage: make [-f path\Makefile] [DEBUG=Y] [NO_UNICODE=Y] target
 
-ifeq ($(OS),Windows_NT)
-LDFLAGS = -lpdcurses
-else
-LDFLAGS = -lncurses
-endif
+NAME = gol
+CC = gcc
+
+CFLAGS = -I include
 
 SRC = src
 OBJ = obj
 BINDIR = bin
 
-BIN = bin/gol
+BIN = bin/$(NAME)
 SRCS=$(wildcard $(SRC)/*.c)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
+ifeq ($(OS),Windows_NT)
+	LDFLAGS = -lpdcurses
+	RM = del
+	NAME := $(NAME).exe
+	DEL_CLEAN = $(subst /,\,$(BIN)) $(subst /,\,$(OBJS))
+else
+	LDFLAGS = -lncurses
+	RM = rm -f
+	DEL_CLEAN = $(BIN) $(OBJS)
+endif
+
+ifeq ($(DEBUG),Y)
+	CFLAGS += -ggdb -Wall
+endif
+
+ifeq ($(NO_UNICODE),Y)
+	CFLAGS += -D NO_UNICODE
+endif
+
 all: $(BIN)
-debug: CFLAGS +=-ggdb -Wall
-NO_UNICODE: CFLAGS += -D NO_UNICODE
-NO_UNICODE debug: ${BIN}
 
 $(BIN): $(OBJS)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
@@ -26,12 +42,22 @@ $(BIN): $(OBJS)
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
-ifeq ($(OS),Windows_NT)
 clean:
-	del bin\gol.exe $(subst /,\,$(OBJS))
-else
-clean:
-	rm -f $(BIN) $(OBJS)
-endif
+	-$(RM) $(DEL_CLEAN)
 
-.PHONY: all clean debug NO_UNICODE
+help:
+	@echo "Game of Life Simulation"
+	@echo
+	@echo "Usage: make [-f path\Makefile] [DEBUG=Y] [NO_UNICODE=Y] target"
+	@echo
+	@echo "Target rules:"
+	@echo "    all         - Compiles binary file [Default]"
+	@echo "    clean       - Clean the project by removing binaries"
+	@echo "    help        - Prints a help message with target rules"
+	@echo
+	@echo "Optional parameters:"
+	@echo "    DEBUG       - Compile binary file with debug flags enabled"
+	@echo "    NO_UNICODE  - Compile binary file that does not use Unicode characters"
+	@echo
+
+.PHONY: all clean help
