@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "game.h"
 #include "logic.h"
 #include "utils.h"
 
@@ -36,8 +37,8 @@ void insert(int row, int col, int val, int mod) {
   c->val += mod;
 }
 
-int WIDTH, HEIGHT;
-int isExpanding;
+extern int width, height;
+int        isExpanding;
 
 Cell **save_cells;
 int    save_cells_s;
@@ -85,8 +86,8 @@ void addToCellsWrap(int i, int j, int value) {
 
   for (int k = i - 1; k <= i + 1; k++)
     for (int l = j - 1; l <= j + 1; l++) {
-      int a = (k + HEIGHT) % HEIGHT;
-      int b = (l + WIDTH) % WIDTH;
+      int a = (k + height) % height;
+      int b = (l + width) % width;
       if (a != i || b != j)
         insert(a, b, 0, mod);
     }
@@ -272,20 +273,14 @@ void do_evolution(int steps) {
   }
 }
 
-int logic_init(int w, int h, int isWrapping) {
-  WIDTH = w;
-  HEIGHT = h;
-  addToCells = addition_modes[isWrapping];
+int logic_init(int isWrapping, int index) {
+  save_cells_s = 0;
   save_cells_sm = 100;
   save_cells = malloc(save_cells_sm * sizeof(struct Cell *));
-  save_cells_s = 0;
 
-  return 1;
-}
-
-int evolution_init(int index) {
-  evolve_index = index;
+  addToCells = addition_modes[isWrapping];
   evolve = evolution_modes[index];
+  evolve_index = index;
   toggle_mod = evolution_cells[index];
   return 1;
 }

@@ -141,14 +141,12 @@ void load_files(void) {
 
 void free_files(void) { file_free(loaded_files); }
 
+// from logic.c
 extern Cell **save_cells;
-extern int    save_cells_s;
+extern int    save_cells_s, pos_y, pos_x, evolve_index;
 
-extern int pos_y;
-extern int pos_x;
-
-extern int WIDTH, HEIGHT;
-extern int evolve_index;
+// form game.c
+extern int width, height;
 
 void file_load_pattern(char *name, int index) {
   char *fname = malloc((strlen(name) + 5) * sizeof(char));
@@ -189,6 +187,8 @@ void file_save_pattern(char *name, int index) {
 }
 
 void file_load(char *name, int index) {
+  int w, h;
+
   char *fname = malloc((strlen(name) + 5) * sizeof(char));
   sprintf(fname, "%s.all", name);
 
@@ -196,14 +196,13 @@ void file_load(char *name, int index) {
   if (!f)
     exit(1);
 
-  fscanf(f, "%d %d %d", &HEIGHT, &WIDTH, &evolve_index);
+  fscanf(f, "%d %d %d", &h, &w, &evolve_index);
   int row, col, val;
   while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF) {
     setAt(pos_y + row, pos_x + col, val);
   }
 
-  game(HEIGHT, WIDTH, evolution_names[evolve_index],
-       evolution_cells[evolve_index], evolve_index);
+  game(h, w, evolve_index);
 }
 
 void file_save(char *name, int index) {
@@ -214,7 +213,7 @@ void file_save(char *name, int index) {
   if (!f)
     exit(1);
 
-  fprintf(f, "%d %d %d\n", HEIGHT, WIDTH, evolve_index);
+  fprintf(f, "%d %d %d\n", height, width, evolve_index);
   for (Cell *c = hash; c != NULL; c = c->hh.next) {
     fprintf(f, "%d %d %d\n", c->cord.row, c->cord.col, c->val);
   }

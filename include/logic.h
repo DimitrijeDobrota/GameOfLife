@@ -20,18 +20,14 @@ extern Cell *hash;
 
 extern char *evolution_names[];
 extern int   evolution_cells[];
-extern int   evolution_size;
-extern int   evolve_index;
+extern int   evolution_size, evolve_index;
+
+extern int pos_y, pos_x;
 
 extern Cell **save_cells;
 extern int    save_cells_s;
 
-extern int pos_y;
-extern int pos_x;
-
-extern int WIDTH, HEIGHT;
-
-int  logic_init(int w, int h, int isWrapping);
+int  logic_init(int isWrapping, int index);
 int  evolution_init(int index);
 void do_evolution(int steps);
 int  logic_free(void);

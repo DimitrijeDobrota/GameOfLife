@@ -11,7 +11,7 @@ void window_free(T self);
 T    window_init(T self);
 T    window_split(T self, int hor, int a, int b, char *name1, char *name2);
 void window_unsplit(T self);
-T    window_center(T self, int tmp, int h, int w, char *name);
+T    window_center(T self, int h, int w, char *name);
 void window_update_children(T self);
 
 WINDOW *WINDOW_new(T self);
@@ -22,7 +22,7 @@ int     window_wight(T self);
 WINDOW *window_win(T self);
 void    window_settings(WINDOW *win);
 void    window_clear(T self);
-void window_clear_noRefresh(T self);
+void    window_clear_noRefresh(T self);
 
 void window_set_title(T self, char *title);
 

@@ -12,8 +12,8 @@
 #include "utils.h"
 #include "window.h"
 
-window_T        menu_w;
 extern window_T MAIN_w;
+window_T menu_w;
 
 void settings(char *pass, int index) {
   struct imenu_T imenu_items[] = {
@@ -27,7 +27,7 @@ void settings(char *pass, int index) {
     int row = atoi(imenu_items[0].buffer);
     int column = atoi(imenu_items[1].buffer);
 
-    game(row, column, pass, evolution_cells[index], index);
+    game(row, column, index);
     break;
   }
 

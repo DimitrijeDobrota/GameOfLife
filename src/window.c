@@ -170,11 +170,11 @@ T window_split(T self, int hor, int a, int b, char *name1, char *name2) {
   return self->c1;
 }
 
-T window_center(T self, int tmp, int h, int w, char *name) {
+T window_center(T self, int h, int w, char *name) {
   self->c1 = window_new();
   self->c2 = NULL;
 
-  self->mod[0] = tmp;
+  self->mod[0] = -1;
   self->mod[1] = h;
   self->mod[2] = w;
 
