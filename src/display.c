@@ -5,20 +5,21 @@
 
 #include "display.h"
 #include "logic.h"
+#include "pattern.h"
 #include "utils.h"
 #include "window.h"
 
 #define center_vertical(n)      wcenter_vertical(MAIN_W, n);
 #define center_horizontal(y, n) wcenter_horizontal(MAIN_W, y, n);
 
-#define CHAR_BLANK      "  "
-#define CHAR_CURSOR     "<>"
-#define CHAR_CIRCLE     "\u26AB"
-#define CHAR_SQUARE     "\u2B1B"
-#define CHAR_SQUARED    "\u2B1C"
-#define CHAR_CIRCLE_DOT "\u2299"
+#define CHAR_BLANK  "  "
+#define CHAR_CURSOR "<>"
+#define CHAR_CIRCLE "\u26AB"
+#define CHAR_SQUARE "\u2B1B"
 
 #define CHAR_ACTIVE CHAR_CIRCLE
+
+extern Cell *hash;
 
 window_T MAIN_w = NULL;
 
@@ -57,12 +58,28 @@ window_T MAIN_w = NULL;
     }                                                                          \
   }
 
+void print_pattern(WINDOW *win, pattern_T pattern, int *y, int x, int indent) {
+  (*y)++;
+  wmove(win, (*y)++, x + indent);
+  for (char *c = pattern->cells; *c != '\0'; c++) {
+    if (*c == ' ') {
+      wmove(win, (*y)++, x + indent);
+      continue;
+    }
+    int val = *c - '0';
+    wattrset(win, COLOR_PAIR(val + 2));
+    print_cell(win, "  ");
+  }
+}
+
 int screen_offset_x, screen_offset_y;
 int cursor_offset_x, cursor_offset_y;
 
+int wrap;
+
 int (*cord)(int, int, int);
 
-int get_screen_position(int wrap, int value, int screen_offset, int screen_size,
+int get_screen_position(int value, int screen_offset, int screen_size,
                         int board_size) {
   int overshoot = screen_offset + screen_size - board_size;
 
@@ -87,27 +104,26 @@ int get_screen_position(int wrap, int value, int screen_offset, int screen_size,
   }
 }
 
-void display_game(WINDOW *win, int h, int w, int ph, int pw, int wrap) {
-  werase(win);
+void display_game(window_T wind, int h, int w, int ph, int pw) {
+  WINDOW *win = window_win(wind);
 
-  wattrset(win, COLOR_PAIR(0));
-  box(win, ACS_VLINE, ACS_HLINE);
+  window_clear_noRefresh(wind);
 
   int row, col, val;
-  getNext(&row, &col, &val, 1);
-  int i = 0;
-  while (getNext(&row, &col, &val, 0)) {
+  for (Cell *c = hash; c != NULL; c = c->hh.next) {
     wattrset(win, COLOR_PAIR(val + 2));
 
-    if ((row = get_screen_position(wrap, row, screen_offset_y, ph, h)) < 0)
-      continue;
-    if ((col = get_screen_position(wrap, col, screen_offset_x, pw, w)) < 0)
+    /* row = get_screen_position(c->row, screen_offset_y, ph, h); */
+    /* col = get_screen_position(c->col, screen_offset_x, pw, w); */
+    row = get_screen_position(c->cord.row, screen_offset_y, ph, h);
+    col = get_screen_position(c->cord.col, screen_offset_x, pw, w);
+    val = c->val;
+
+    if (row < 0 || col < 0)
       continue;
 
     mvprint_cell(win, row, col, 2, CHAR_BLANK);
   }
-
-  wrefresh(win);
 }
 
 void display_cursor(WINDOW *win, int h, int w, int ph, int pw) {
@@ -119,7 +135,6 @@ void display_cursor(WINDOW *win, int h, int w, int ph, int pw) {
 
   val = getAt(cord(y_at(cursor_offset_y)), cord(x_at(cursor_offset_x)));
   mvprint_cell(win, cursor_offset_y, cursor_offset_x, 5, CHAR_CURSOR);
-  wrefresh(win);
 
   prev_y = cursor_offset_y;
   prev_x = cursor_offset_x;
@@ -130,13 +145,17 @@ int display_select(window_T wind, int w, int h) {
   int current_offset_x = cursor_offset_x;
   int ret_value = 1;
 
-redraw:;
-  int CLINES = LINES, CCOLS = COLS;
-  WINDOW *new = WINDOW_new(wind);
+  int     CLINES = LINES, CCOLS = COLS;
   WINDOW *win = window_win(wind);
+  WINDOW *new;
 
-  overlay(win, new);
-  wrefresh(new);
+  if (UNICODE) {
+    new = WINDOW_new(wind);
+    overlay(win, new);
+    wrefresh(new);
+  } else {
+    new = win;
+  }
 
   int ph = window_height(wind), pw = window_wight(wind) / 2;
   nodelay(stdscr, 0);
@@ -146,16 +165,15 @@ redraw:;
     int start_j = MIN(cursor_offset_x, current_offset_x);
     int end_j = MAX(cursor_offset_x, current_offset_x);
 
+    if (!UNICODE)
+      display_game(wind, h, w, ph, pw);
+
     print_cells(new, start_i, end_i + 1, start_j, end_j + 1, 8, CHAR_BLANK);
     wrefresh(new);
 
     if (is_term_resized(CLINES, CCOLS)) {
-      flushinp();
-      delwin(new);
       HANDLE_RESIZE;
-      ph = window_height(wind), pw = window_wight(wind) / 2;
-      /* display_game(win, w, h, ph, pw); */
-      goto redraw;
+      goto end;
     }
 
     int c = getch();
@@ -194,6 +212,8 @@ redraw:;
 
     // confirm and save slection
     case '\n':
+      for_each_cell(start_i, end_i + 1, start_j, end_j + 1)
+          saveCell(cord(y_at(i)), cord(x_at(j)));
       ret_value = 100;
       goto end;
 
@@ -202,6 +222,7 @@ redraw:;
     case 'q':
     case 'Q':
       goto end;
+
     defalut:
       flushinp();
       continue;
@@ -227,10 +248,7 @@ void display_status(window_T wind, unsigned long int gen, int gen_step,
 
   wmove(win, 1, 1);
   wprintw(win, " | %5s | ", play ? "play" : "pause");
-  if(wrap)
-    wprintw(win, "Size: %dx%d | ", height, wight);
-  else
-    wprintw(win, "Size: unlimited | ");
+  wprintw(win, wrap ? "Size: %dx%d | " : "Size: unlimited | ", height, wight);
   wprintw(win, "Generation: %10lu(+%d) | ", gen, gen_step);
   wprintw(win, "dt: %4dms | ", dt);
   wprintw(win, "Cursor: %4dx%-4d | ", cursor_y, cursor_x);
@@ -293,7 +311,7 @@ int display_imenu(window_T wind, struct imenu_T *items, int size) {
       maxi = len;
 
   curs_set(1);
-  window_clear(wind);
+  window_clear_noRefresh(wind);
 redraw:;
   win = window_win(wind);
   y_offset = wcenter_vertical(wind, size * 2 - 1);
@@ -338,7 +356,19 @@ redraw:;
   curs_set(0);
 }
 
-void display_menu(window_T wind, char *name, struct menu_T *items, int size) {
+void display_title(window_T wind, int y) {
+  WINDOW *win = window_win(wind);
+  title.height = (!title.height) ? pattern_height(&title) : title.height;
+  title.width = (!title.width) ? pattern_width(&title) : title.width;
+
+  int max_w = window_wight(wind);
+  if (title.width * 2 < max_w)
+    print_pattern(win, &title, &y, (max_w - title.width * 2) / 2, 0);
+  wrefresh(win);
+}
+
+void display_menu(window_T wind, char *name, struct menu_T *items, int size,
+                  int title) {
   WINDOW *win;
   int     current = 0;
 
@@ -348,11 +378,16 @@ void display_menu(window_T wind, char *name, struct menu_T *items, int size) {
       maxi = len;
 
   window_set_title(wind, name);
-  window_clear(wind);
+  window_clear_noRefresh(wind);
+
 redraw:;
   win = window_win(wind);
   int CLINES = LINES, CCOLS = COLS;
   int y_offset = wcenter_vertical(wind, size * 2 - 1);
+
+  if (title)
+    display_title(wind, title);
+
   while (TRUE) {
     CLAMP(current, 0, size - 1);
 
@@ -404,9 +439,9 @@ void curses_start(void) {
   init_pair(3, COLOR_WHITE, -1);
   init_pair(4, COLOR_RED, -1);
 
-  init_pair(5, COLOR_WHITE, COLOR_CYAN);
-  init_pair(6, COLOR_WHITE, COLOR_CYAN);
-  init_pair(7, COLOR_RED, COLOR_CYAN);
+  init_pair(5, COLOR_WHITE, COLOR_BLUE);
+  init_pair(6, COLOR_WHITE, COLOR_BLUE);
+  init_pair(7, COLOR_RED, COLOR_BLUE);
 
   init_pair(8, COLOR_WHITE, COLOR_YELLOW);
   init_pair(9, COLOR_WHITE, COLOR_YELLOW);
@@ -416,13 +451,13 @@ void curses_start(void) {
   init_pair(3, COLOR_WHITE, COLOR_WHITE);
   init_pair(4, COLOR_RED, COLOR_RED);
 
-  init_pair(5, COLOR_YELLOW, -1);
-  init_pair(6, COLOR_YELLOW, COLOR_WHITE);
-  init_pair(7, COLOR_YELLOW, COLOR_RED);
+  init_pair(5, COLOR_BLUE, -1);
+  init_pair(6, COLOR_BLUE, COLOR_WHITE);
+  init_pair(7, COLOR_BLUE, COLOR_RED);
 
   init_pair(8, COLOR_WHITE, COLOR_YELLOW);
-  init_pair(9, COLOR_WHITE, COLOR_WHITE);
-  init_pair(10, COLOR_RED, COLOR_RED);
+  init_pair(9, COLOR_WHITE, COLOR_BLUE);
+  init_pair(10, COLOR_RED, COLOR_BLACK);
 #endif
 }
 
@@ -459,4 +494,92 @@ int display_start(void) {
 int display_stop(void) {
   curses_stop();
   return 1;
+}
+
+void display_patterns(window_T wind) {
+  int y_start = 2, x_start = 2;
+  int indent = 2;
+
+  window_set_title(wind, "Help");
+  window_clear_noRefresh(wind);
+redraw:;
+  int     CLINES = LINES, CCOLS = COLS;
+  WINDOW *win = window_win(wind);
+  int     ph = window_height(wind), pw = window_wight(wind);
+  int     y, x, maxi, max_x;
+  int     count;
+
+  x = x_start;
+  for (int i = 0; i < pattern_groups_s; i++) {
+    wattrset(win, 0);
+    pattern_group_T group = pattern_groups[i];
+    y = y_start;
+
+    if ((maxi = strlen(group.name)) + x >= pw)
+      continue;
+    mvwprintw(win, y++, x, "%s:", group.name);
+
+    y++;
+    for (int j = 0; j < group.size; j++) {
+      struct pattern_T p = group.pattern[j];
+      p.height = (!p.height) ? pattern_height(&p) : p.height;
+      p.width = (!p.width) ? pattern_width(&p) : p.width;
+
+      max_x = MAX(p.width * 2, strlen(p.name) + 3);
+
+      if (y + p.height + 4 >= ph) {
+        y = 3;
+        x += (maxi + 2 + indent * 1);
+        maxi = max_x;
+      }
+
+      if (x + max_x + 5 + indent >= pw) {
+        break;
+      }
+
+      wattrset(win, 0);
+      if (p.height != 0) {
+        mvwprintw(win, y++, x, "- %s: ", p.name);
+        print_pattern(win, &p, &y, x, indent);
+        y += 2;
+      } else {
+        if (*p.name) {
+          if (*p.cells != '\0') {
+            mvwprintw(win, y, x, "  %s: ", p.name);
+            max_x += 2;
+          } else
+            mvwprintw(win, y, x, "%s: ", p.name);
+          wprintw(win, "%s", p.cells);
+        }
+        y++;
+      }
+
+      maxi = MAX(maxi, max_x);
+    }
+    x += (maxi + 2 + indent * 2);
+
+    wattrset(win, 0);
+    for (int i = 1; i <= ph; i++)
+      mvwprintw(win, i, x, "|");
+
+    x += 2 * indent;
+    if (x >= pw)
+      break;
+  }
+
+  wrefresh(win);
+  while (true) {
+    switch (getch()) {
+    case 27:
+    case 'q':
+    case 'Q':
+    case '\n':
+      goto end;
+    }
+    if (is_term_resized(CLINES, CCOLS)) {
+      HANDLE_RESIZE;
+      goto redraw;
+    }
+  }
+end:;
 }

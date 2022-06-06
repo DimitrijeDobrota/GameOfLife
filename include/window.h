@@ -22,6 +22,7 @@ int     window_wight(T self);
 WINDOW *window_win(T self);
 void    window_settings(WINDOW *win);
 void    window_clear(T self);
+void window_clear_noRefresh(T self);
 
 void window_set_title(T self, char *title);
 

@@ -7,6 +7,9 @@
 #include <unistd.h>
 
 #include "display.h"
+#include "game.h"
+#include "logic.h"
+#include "utils.h"
 
 #ifdef _WIN32
 #define SETTINGS_DIR  "C:\\GoL" // without trailing '\'
@@ -138,8 +141,83 @@ void load_files(void) {
 
 void free_files(void) { file_free(loaded_files); }
 
-// Comming soon...
-void file_load_pattern(char *name, int index) { return; }
-void file_save_pattern(char *name, int index) { return; }
-void file_load(char *name, int index) { return; }
-void file_save(char *name, int index) { return; }
+extern Cell **save_cells;
+extern int    save_cells_s;
+
+extern int pos_y;
+extern int pos_x;
+
+extern int WIDTH, HEIGHT;
+extern int evolve_index;
+
+void file_load_pattern(char *name, int index) {
+  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  sprintf(fname, "%s.part", name);
+
+  FILE *f = fopen(fname, "r");
+  if (!f)
+    exit(1);
+
+  int row, col, val;
+  while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF) {
+    setAt(pos_y + row, pos_x + col, val);
+  }
+}
+
+void file_save_pattern(char *name, int index) {
+  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  sprintf(fname, "%s.part", name);
+
+  FILE *f = fopen(fname, "w");
+  if (!f)
+    exit(1);
+
+  int min_y = save_cells[0]->cord.row;
+  int min_x = save_cells[0]->cord.col;
+  for (int i = 0; i < save_cells_s; i++) {
+    Cell *c = save_cells[i];
+    min_y = MIN(min_y, c->cord.row);
+    min_x = MIN(min_x, c->cord.col);
+  }
+
+  for (int i = 0; i < save_cells_s; i++) {
+    Cell *c = save_cells[i];
+    fprintf(f, "%d %d %d\n", c->cord.row - min_y, c->cord.col - min_x, c->val);
+  }
+
+  fclose(f);
+}
+
+void file_load(char *name, int index) {
+  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  sprintf(fname, "%s.all", name);
+
+  FILE *f = fopen(fname, "r");
+  if (!f)
+    exit(1);
+
+  fscanf(f, "%d %d %d", &HEIGHT, &WIDTH, &evolve_index);
+  int row, col, val;
+  while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF) {
+    setAt(pos_y + row, pos_x + col, val);
+  }
+
+  game(HEIGHT, WIDTH, evolution_names[evolve_index],
+       evolution_cells[evolve_index], evolve_index);
+}
+
+void file_save(char *name, int index) {
+  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  sprintf(fname, "%s.all", name);
+
+  FILE *f = fopen(fname, "w");
+  if (!f)
+    exit(1);
+
+  fprintf(f, "%d %d %d\n", HEIGHT, WIDTH, evolve_index);
+  for (Cell *c = hash; c != NULL; c = c->hh.next) {
+    fprintf(f, "%d %d %d\n", c->cord.row, c->cord.col, c->val);
+  }
+
+  fclose(f);
+}

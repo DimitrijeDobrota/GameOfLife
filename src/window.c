@@ -29,9 +29,8 @@ void WINDOW_init(WINDOW *win, char *title) {
   window_settings(win);
   wattrset(win, COLOR_PAIR(0));
   box(win, ACS_VLINE, ACS_HLINE);
-  if (title) {
+  if (title)
     mvwprintw(win, 0, 1, "%s", title);
-  }
   wrefresh(win);
 }
 
@@ -207,6 +206,14 @@ void window_update_children(T self) {
 void window_clear(T self) {
   werase(self->win);
   WINDOW_init(self->win, self->title);
+}
+
+void window_clear_noRefresh(T self) {
+  werase(self->win);
+  wattrset(self->win, COLOR_PAIR(0));
+  box(self->win, ACS_VLINE, ACS_HLINE);
+  if (self->title)
+    mvwprintw(self->win, 0, 1, "%s", self->title);
 }
 
 void window_settings(WINDOW *win) { keypad(win, TRUE); }
