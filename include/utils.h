@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <curses.h>
+#include "display.h"
 
 #define MAX(a, b)       ((a > b) ? a : b)
 #define MIN(a, b)       ((a < b) ? a : b)
@@ -29,5 +30,12 @@
 
 #define MAX_SCREEN_H 512
 #define MAX_SCREEN_W 1888
+
+#define MEM_CHECK(x)                                                           \
+  if ((x) == NULL) {                                                           \
+    display_stop();                                                            \
+    printf("MEM GRESKA");                                                      \
+    abort();                                                                   \
+  }
 
 #endif

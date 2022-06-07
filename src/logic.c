@@ -28,7 +28,7 @@ void insert(int row, int col, int val, int mod) {
 
   c = get(row, col);
   if (c == NULL) {
-    c = malloc(sizeof(Cell));
+    MEM_CHECK(c = malloc(sizeof(Cell)));
     c->cord.row = row;
     c->cord.col = col;
     c->val = val;
@@ -276,7 +276,7 @@ void do_evolution(int steps) {
 int logic_init(int isWrapping, int index) {
   save_cells_s = 0;
   save_cells_sm = 100;
-  save_cells = malloc(save_cells_sm * sizeof(struct Cell *));
+  MEM_CHECK(save_cells = malloc(save_cells_sm * sizeof(struct Cell *)));
 
   addToCells = addition_modes[isWrapping];
   evolve = evolution_modes[index];
@@ -342,9 +342,7 @@ void saveCell(int i, int j) {
     if (save_cells_s == save_cells_sm) {
       Cell **t;
       save_cells_sm *= 2;
-      t = realloc(save_cells, save_cells_sm);
-      if (!t)
-        exit(1);
+      MEM_CHECK(t = realloc(save_cells, save_cells_sm));
       save_cells = t;
     }
 

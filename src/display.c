@@ -175,6 +175,17 @@ redraw:;
   while (TRUE) {
     CLAMP(current, 0, size - 1);
 
+    if (!size) {
+      char *message = "NOTHING TO DISPLAY HERE!";
+      wcenter_horizontal(wind, y_offset, strlen(message));
+      waddstr(win, message);
+      wrefresh(win);
+      nodelay(stdscr, 0);
+      getch();
+      nodelay(stdscr, 1);
+      return;
+    }
+
     for (int i = 0; i < size; i++) {
       wattrset(win, COLOR_PAIR(i == current ? 1 : 0));
       wcenter_horizontal(wind, y_offset + i * 2, maxi);
@@ -245,11 +256,6 @@ void curses_start(void) {
 #endif
 }
 
-void curses_stop(void) {
-  window_free(MAIN_w);
-  endwin();
-}
-
 void handle_winch(int sig) {
   endwin();
   refresh();
@@ -260,10 +266,6 @@ void handle_winch(int sig) {
 }
 
 int display_start(void) {
-  /* #ifndef _WIN32 */
-  /*   signal(SIGWINCH, handle_winch); */
-  /* #endif */
-
   curses_start();
   MAIN_w = window_init(window_new());
 
@@ -276,7 +278,8 @@ int display_start(void) {
 }
 
 int display_stop(void) {
-  curses_stop();
+  window_free(MAIN_w);
+  endwin();
   return 1;
 }
 
@@ -291,7 +294,6 @@ redraw:;
   WINDOW *win = window_win(wind);
   int     ph = window_height(wind), pw = window_wight(wind);
   int     y, x, maxi, max_x;
-  int     count;
 
   x = x_start;
   for (int i = 0; i < pattern_groups_s; i++) {

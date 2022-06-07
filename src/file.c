@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,7 +16,7 @@
 #define SETTINGS_DIR  "C:\\GoL" // without trailing '\'
 #define MAKE_DIR(dir) (mkdir(dir))
 #else
-#define SETTINGS_DIR  "/home/magaknuto/GoL"
+#define SETTINGS_DIR  "GoL"
 #define MAKE_DIR(dir) (mkdir(dir, 0777))
 #endif // _WIN32
 
@@ -29,14 +30,14 @@ file_T loaded_files;
 
 file_T file_new(char *name) {
   file_T f;
-  f = malloc(sizeof(*f));
+  MEM_CHECK(f = malloc(sizeof(*f)));
   f->next = NULL;
   if (name == NULL) {
     f->name = NULL;
     return f;
   }
 
-  f->name = malloc((strlen(name) + 1) * sizeof(char));
+  MEM_CHECK(f->name = malloc((strlen(name) + 1) * sizeof(char)));
   strcpy(f->name, name);
   return f;
 }
@@ -91,13 +92,26 @@ file_T file_find(file_T self, char *name) {
 }
 
 int file_setup(void) {
-  if (!DirectoryExists(SETTINGS_DIR)) {
-    if (MAKE_DIR(SETTINGS_DIR) != 0) {
+  char *dir;
+  MEM_CHECK(dir = malloc(PATH_MAX * sizeof(char)));
+
+#ifdef _WIN32
+  strcpy(dir, SETTINGS_DIR);
+#else
+  const char *homedir = getenv("HOME");
+  sprintf(dir, "%s/%s", homedir, SETTINGS_DIR);
+#endif
+
+  if (!DirectoryExists(dir)) {
+    printf("Directory %s does not exists; Trying to create it...\n", dir);
+    if (MAKE_DIR(dir) != 0) {
+      printf("Cannot create the directory\n");
       return 0;
     }
   }
 
-  if (chdir(SETTINGS_DIR) != 0) {
+  if (chdir(dir) != 0) {
+    printf("Cannot change the directory\n");
     return 0;
   }
   return 1;
@@ -106,10 +120,10 @@ int file_setup(void) {
 int file_select(char *ext, char ***buffer) {
   int    maxsize = 4;
   int    size = 0;
-  char **tmp;
+  char **tmp = NULL;
   file_T current = loaded_files;
 
-  *buffer = malloc(maxsize * sizeof(char *));
+  MEM_CHECK(*buffer = malloc(maxsize * sizeof(char *)));
   for (; current != NULL; current = current->next) {
     char *dot = strrchr(current->name, '.');
     if (dot == NULL)
@@ -119,17 +133,16 @@ int file_select(char *ext, char ***buffer) {
       (*buffer)[size++] = current->name;
       if (size == maxsize) {
         maxsize *= 2;
-        tmp = realloc(*buffer, maxsize * sizeof(char *));
-        if (!tmp)
-          exit(1);
+        MEM_CHECK(tmp = realloc(*buffer, maxsize * sizeof(char *)));
         *buffer = tmp;
       }
     }
   }
-  tmp = realloc(*buffer, size * sizeof(char *));
-  if (!tmp)
-    exit(1);
-  *buffer = tmp;
+  if (size) {
+    MEM_CHECK(tmp = realloc(*buffer, size * sizeof(char *)));
+    *buffer = tmp;
+  }
+
   return size;
 }
 
@@ -149,7 +162,9 @@ extern int    save_cells_s, pos_y, pos_x, evolve_index;
 extern int width, height;
 
 void file_load_pattern(char *name, int index) {
-  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  char *fname;
+
+  MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.part", name);
 
   FILE *f = fopen(fname, "r");
@@ -163,7 +178,9 @@ void file_load_pattern(char *name, int index) {
 }
 
 void file_save_pattern(char *name, int index) {
-  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  char *fname;
+
+  MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.part", name);
 
   FILE *f = fopen(fname, "w");
@@ -187,9 +204,10 @@ void file_save_pattern(char *name, int index) {
 }
 
 void file_load(char *name, int index) {
-  int w, h;
+  char *fname;
+  int   w, h;
 
-  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.all", name);
 
   FILE *f = fopen(fname, "r");
@@ -206,7 +224,9 @@ void file_load(char *name, int index) {
 }
 
 void file_save(char *name, int index) {
-  char *fname = malloc((strlen(name) + 5) * sizeof(char));
+  char *fname;
+
+  MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.all", name);
 
   FILE *f = fopen(fname, "w");

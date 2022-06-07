@@ -159,18 +159,22 @@ int display_select(window_T wind) {
     // offset selection
     case 'w':
     case 'W':
+    case KEY_UP:
       current_offset_y--;
       break;
     case 's':
     case 'S':
+    case KEY_DOWN:
       current_offset_y++;
       break;
     case 'a':
     case 'A':
+    case KEY_LEFT:
       current_offset_x--;
       break;
     case 'd':
     case 'D':
+    case KEY_RIGHT:
       current_offset_x++;
       break;
 
@@ -200,10 +204,6 @@ int display_select(window_T wind) {
     case 'q':
     case 'Q':
       goto end;
-
-    defalut:
-      flushinp();
-      continue;
     }
     flushinp();
 
@@ -229,7 +229,6 @@ end:;
 
 void game(int s_h, int s_w, int mode_index) {
   char *mode_name = evolution_names[mode_index];
-  int   ncells = evolution_cells[mode_index];
 
   int t_y = 0, t_x = 0, ct_x = 0, ct_y = 0;
   int gen = 0, gen_step = 1, play = 0, time_const = 100, time_step = 1;

@@ -41,7 +41,9 @@ WINDOW *WINDOW_new(T self) {
 }
 
 T window_new(void) {
-  T self = malloc(sizeof(*self));
+  T self;
+
+  MEM_CHECK(self = malloc(sizeof(*self)));
   self->win = NULL;
   self->c1 = NULL;
   self->c2 = NULL;

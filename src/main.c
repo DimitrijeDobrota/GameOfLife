@@ -13,7 +13,7 @@
 #include "window.h"
 
 extern window_T MAIN_w;
-window_T menu_w;
+window_T        menu_w;
 
 void settings(char *pass, int index) {
   struct imenu_T imenu_items[] = {
@@ -38,7 +38,9 @@ void settings(char *pass, int index) {
 }
 
 void mode_select(char *pass, int index) {
-  struct menu_T *mode_items = malloc(evolution_size * sizeof(struct menu_T));
+  struct menu_T *mode_items;
+
+  MEM_CHECK(mode_items = malloc(evolution_size * sizeof(struct menu_T)));
   for (int i = 0; i < evolution_size; i++) {
     mode_items[i].name = evolution_names[i];
     mode_items[i].callback = settings;
@@ -70,13 +72,14 @@ void new_file(char *pass, int index) {
 
 struct menu_T *file_menu_list(char *ext, void (*callback)(char *, int),
                               int offset, int *size) {
-  char **buffer;
-  int    n;
+  struct menu_T *file_items;
+  char         **buffer;
+  int            n;
 
   load_files();
   n = file_select(ext, &buffer);
 
-  struct menu_T *file_items = malloc((n + offset) * sizeof(struct menu_T));
+  MEM_CHECK(file_items = malloc((n + offset) * sizeof(struct menu_T)));
   for (int i = 0; i < n; i++) {
     file_items[i + offset].name = buffer[i];
     file_items[i + offset].callback = callback;
@@ -161,8 +164,6 @@ int main(void) {
   while (TRUE) {
     display_menu(menu_w, "Main menu", menu_items, menu_items_s, 1);
   }
-
-  window_free(MAIN_w);
 
   if (!display_stop()) {
     printf("Couldn't stop the display!\n");
