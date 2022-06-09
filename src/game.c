@@ -128,7 +128,7 @@ int display_select(window_T wind) {
   WINDOW *new;
 
   if (UNICODE) {
-    new = WINDOW_new(wind);
+    new = window_win_new(wind);
     overlay(win, new);
     wrefresh(new);
   } else {
@@ -244,12 +244,12 @@ reset_screen:
 
   wrap = (s_w > 0 && s_h > 0);
 
-  if (!wrap) {
-    width = window_wight(screen_w) / 2;
-    height = window_height(screen_w);
-  } else {
+  if (wrap) {
     width = s_w;
     height = s_h;
+  } else {
+    width = 0;
+    height = 0;
   }
 
   logic_init(wrap, mode_index);

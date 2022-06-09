@@ -6,29 +6,35 @@
 #define window_T T
 typedef struct T *T;
 
-T    window_new(void);
-void window_free(T self);
-T    window_init(T self);
-T    window_split(T self, int hor, int a, int b, char *name1, char *name2);
-void window_unsplit(T self);
-T    window_center(T self, int h, int w, char *name);
-void window_update_children(T self);
+// General
 
-WINDOW *WINDOW_new(T self);
+T       window_new(void);
+T       window_init(T self);
+T       window_split(T self, int hor, int a, int b, char *name1, char *name2);
+T       window_center(T self, int h, int w, char *name);
 
-T       window_sibiling(T self);
-int     window_height(T self);
-int     window_wight(T self);
-WINDOW *window_win(T self);
-void    window_settings(WINDOW *win);
+WINDOW *window_win_new(T self);
+
 void    window_clear(T self);
 void    window_clear_noRefresh(T self);
+void    window_free(T self);
+void    window_settings(WINDOW *win);
+void    window_unsplit(T self);
+void    window_update_children(T self);
 
-void window_set_title(T self, char *title);
+// Setters and Gettern
 
-void wcenter_horizontal(T window, int y, int n);
+T       window_sibiling(T self);
+WINDOW *window_win(T self);
+int     window_height(T self);
+int     window_wight(T self);
+void    window_set_title(T self, char *title);
+
+// Help
+
 int  wcenter_vertical(T window, int n);
 void cursor_offset(WINDOW *win, int oy, int ox);
+void wcenter_horizontal(T window, int y, int n);
 
 #undef T
 #endif

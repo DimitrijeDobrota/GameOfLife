@@ -11,6 +11,12 @@
 
 window_T MAIN_w = NULL;
 
+void cursor_offset(WINDOW *win, int oy, int ox) {
+  int y, x;
+  getyx(win, y, x);
+  wmove(win, y + oy, x + ox);
+}
+
 void print_pattern(WINDOW *win, pattern_T pattern, int *y, int x, int indent) {
   (*y)++;
   wmove(win, (*y)++, x + indent);
