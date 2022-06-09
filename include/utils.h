@@ -34,7 +34,14 @@
 #define MEM_CHECK(x)                                                           \
   if ((x) == NULL) {                                                           \
     display_stop();                                                            \
-    printf("MEM GRESKA");                                                      \
+    printf("MEM ERROR");                                                      \
+    abort();                                                                   \
+  }
+
+#define FILE_CHECK(x)                                                           \
+  if ((x) == NULL) {                                                           \
+    display_stop();                                                            \
+    printf("FILE ERROR");                                                      \
     abort();                                                                   \
   }
 

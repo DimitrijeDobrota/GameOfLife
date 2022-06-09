@@ -162,30 +162,40 @@ extern int    save_cells_s, pos_y, pos_x, evolve_index;
 extern int width, height;
 
 void file_load_pattern(char *name, int index) {
+  FILE *f;
   char *fname;
+  int   min_y = INT_MAX, min_x = INT_MAX, max_y = -1, max_x = -1;
+  int   row, col, val;
 
   MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.part", name);
 
-  FILE *f = fopen(fname, "r");
-  if (!f)
-    exit(1);
+  FILE_CHECK(f = fopen(fname, "r"));
 
-  int row, col, val;
   while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF) {
-    setAt(pos_y + row, pos_x + col, val);
+    min_y = MIN(min_y, row);
+    min_x = MIN(min_x, col);
+    max_y = MAX(max_y, row);
+    max_x = MAX(max_x, col);
   }
+
+  for (int i = min_y; i <= max_y; i++)
+    for (int j = min_x; j <= max_x; j++)
+      setAt(i + pos_y, j + pos_x, 0);
+
+  rewind(f);
+  while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF)
+    setAt(pos_y + row, pos_x + col, val);
 }
 
 void file_save_pattern(char *name, int index) {
+  FILE *f;
   char *fname;
 
   MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.part", name);
 
-  FILE *f = fopen(fname, "w");
-  if (!f)
-    exit(1);
+  FILE_CHECK(f = fopen(fname, "w"));
 
   int min_y = save_cells[0]->cord.row;
   int min_x = save_cells[0]->cord.col;
@@ -204,34 +214,32 @@ void file_save_pattern(char *name, int index) {
 }
 
 void file_load(char *name, int index) {
+  FILE *f;
   char *fname;
   int   w, h;
 
   MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.all", name);
 
-  FILE *f = fopen(fname, "r");
-  if (!f)
-    exit(1);
+  FILE_CHECK(f = fopen(fname, "r"));
 
   fscanf(f, "%d %d %d", &h, &w, &evolve_index);
   int row, col, val;
   while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF) {
-    setAt(pos_y + row, pos_x + col, val);
+    setAt(row, col, val);
   }
 
   game(h, w, evolve_index);
 }
 
 void file_save(char *name, int index) {
+  FILE *f;
   char *fname;
 
   MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
   sprintf(fname, "%s.all", name);
 
-  FILE *f = fopen(fname, "w");
-  if (!f)
-    exit(1);
+  FILE_CHECK(f = fopen(fname, "w"));
 
   fprintf(f, "%d %d %d\n", height, width, evolve_index);
   for (Cell *c = hash; c != NULL; c = c->hh.next) {
