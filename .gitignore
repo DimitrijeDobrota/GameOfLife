@@ -4,6 +4,8 @@
 .vscode/
 bin/*
 !bin/dir.info
+docs/*
+!docs/dir.info
 
 # Prerequisites
 *.d
