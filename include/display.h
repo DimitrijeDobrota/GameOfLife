@@ -23,20 +23,27 @@ extern window_T MAIN_w;
 
 typedef int (*input_f)(int);
 
+/*
+ * @breaf A item in a menu
+ *
+ * It's intended to be used with display_menu().
+ */
 struct menu_T {
-  void (*callback)(char *, int);
-  char *name;
+  void (*callback)(char *, int); ///< function called when item is selected
+  char *name;                    ///< name of the menu item
 };
 
+/*
+ * @breaf A item in a interactive menu
+ *
+ * It's intended to be used with display_imenu().
+ */
 struct imenu_T {
-  char   *message;
-  int     size;
-  input_f crit;
-  char   *buffer;
+  char   *message; ///< prompt for the user
+  int     size; ///< max number of characters required
+  input_f crit; ///< function that check the validity of a character
+  char   *buffer; ///< place where read character are stored
 };
-
-extern int screen_offset_x, screen_offset_y;
-extern int wrap;
 
 int input(WINDOW *win, char *buffer, int size, input_f crit);
 
@@ -46,9 +53,6 @@ int display_stop(void);
 void display_menu(window_T wind, char *name, struct menu_T *items, int size,
                   int title);
 int  display_imenu(window_T wind, struct imenu_T *items, int size);
-void display_status(window_T wind, unsigned long int generation, int gen_step,
-                    int wrap, int height, int wight, int play, int dt,
-                    int cursor_y, int cursor_x);
 
 void display_patterns(window_T wind);
 void handle_winch(int sig);

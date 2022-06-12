@@ -26,10 +26,13 @@ int coordinate_wrap(int val, int offset, int max) {
   return (val + offset + max) % max;
 }
 
-int win_height, win_width, height, width;
-int screen_offset_x, screen_offset_y;
-int cursor_offset_x, cursor_offset_y;
-int wrap;
+int height, width;
+
+static int win_height, win_width;
+static int screen_offset_x, screen_offset_y;
+static int cursor_offset_x, cursor_offset_y;
+static int wrap, gen = 0, gen_step = 1;
+static int play = 0, time_const = 100, time_step = 1;
 
 coordinate_f cord;
 
@@ -115,6 +118,18 @@ void display_cursor(WINDOW *win) {
 
   prev_y = cursor_offset_y;
   prev_x = cursor_offset_x;
+}
+
+void display_status(window_T wind) {
+  WINDOW *win = window_win(wind);
+
+  wmove(win, 1, 1);
+  wprintw(win, " %5s | ", play ? "play" : "pause");
+  wprintw(win, wrap ? "Size: %dx%d | " : "Size: unlimited | ", height, width);
+  wprintw(win, "Generation: %10lu(+%d) | ", gen, gen_step);
+  wprintw(win, "dt: %4dms | ", time_const);
+  wprintw(win, "Cursor: %4dx%-4d | ", cursor_offset_y, cursor_offset_x);
+  wrefresh(win);
 }
 
 int display_select(window_T wind) {
@@ -232,7 +247,6 @@ void game(int s_h, int s_w, int mode_index) {
   char *mode_name = evolution_names[mode_index];
 
   int t_y = 0, t_x = 0, ct_x = 0, ct_y = 0;
-  int gen = 0, gen_step = 1, play = 0, time_const = 100, time_step = 1;
   wrap = 1;
 
   window_T status_w, screen_w, game_w;
@@ -314,9 +328,7 @@ redraw:;
       gen += gen_step;
     }
 
-    display_status(status_w, gen, gen_step, wrap, height, width, play,
-                   time_const, cord(y_at(cursor_offset_y)),
-                   cord(x_at(cursor_offset_x)));
+    display_status(status_w);
 
     if (screen_change) {
       display_game(game_w);

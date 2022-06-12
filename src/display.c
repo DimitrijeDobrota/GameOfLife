@@ -1,5 +1,16 @@
+/**
+ * @file display.c
+ * @author Dimitrije Dobrota
+ * @date 12 June 2022
+ * @brief This file handles ncurses library and UI
+ *
+ * This file is the main link with ncurses interface. It is responsible for
+ * starting and stopping ncurses library as well as managing it's resources and
+ * handling terminal resize by rebuilding window_T binary tree. It exports
+ * window_T MAIN_w as the entery point for other windows and disiplay calls. It
+ * handles the display of menus and user input.
+ */
 #include <curses.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,18 +22,33 @@
 
 window_T MAIN_w = NULL;
 
+/**
+ * @brief Offset the cursor for ncurses WINDOW*
+ *
+ * @param oy: real number representing offset along y axis
+ * @param ox: real number representing offset along x axis
+ */
 void cursor_offset(WINDOW *win, int oy, int ox) {
   int y, x;
   getyx(win, y, x);
   wmove(win, y + oy, x + ox);
 }
 
-void print_pattern(WINDOW *win, pattern_T pattern, int *y, int x, int indent) {
+/**
+ * @brief Print pattern_T
+ *
+ * @param y: pointer to int representing y cord where the pattern
+ * should be displayed. Will be inc read by the number of lines
+ * printed
+ * @param x: pointer to int representing x cord where the pattern
+ * should be displayed
+ */
+void print_pattern(WINDOW *win, pattern_T pattern, int *y, int x) {
   (*y)++;
-  wmove(win, (*y)++, x + indent);
+  wmove(win, (*y)++, x);
   for (char *c = pattern->cells; *c != '\0'; c++) {
     if (*c == ' ') {
-      wmove(win, (*y)++, x + indent);
+      wmove(win, (*y)++, x);
       continue;
     }
     int val = *c - '0';
@@ -31,20 +57,13 @@ void print_pattern(WINDOW *win, pattern_T pattern, int *y, int x, int indent) {
   }
 }
 
-void display_status(window_T wind, unsigned long int gen, int gen_step,
-                    int wrap, int height, int wight, int play, int dt,
-                    int cursor_y, int cursor_x) {
-  WINDOW *win = window_win(wind);
-
-  wmove(win, 1, 1);
-  wprintw(win, " | %5s | ", play ? "play" : "pause");
-  wprintw(win, wrap ? "Size: %dx%d | " : "Size: unlimited | ", height, wight);
-  wprintw(win, "Generation: %10lu(+%d) | ", gen, gen_step);
-  wprintw(win, "dt: %4dms | ", dt);
-  wprintw(win, "Cursor: %4dx%-4d | ", cursor_y, cursor_x);
-  wrefresh(win);
-}
-
+/**
+ * @brief Get user input of different type up to the specified size
+ *
+ * @param buffer: buffer where the input will be stored
+ * @param size: maximum number of characters in the input
+ * @param crit: function that checks the validity of the character
+ */
 int input(WINDOW *win, char *buffer, int size, input_f crit) {
   int CLINES = LINES, CCOLS = COLS;
   int ch, read = strlen(buffer);
@@ -87,6 +106,10 @@ int input(WINDOW *win, char *buffer, int size, input_f crit) {
   return 0;
 }
 
+/**
+ * @brief Given a array of struct imenu_T, display a menu where user will enter all of
+ * the information required from the array
+ */
 int display_imenu(window_T wind, struct imenu_T *items, int size) {
   WINDOW *win;
   int     y_offset;
@@ -147,6 +170,9 @@ redraw:;
   curs_set(0);
 }
 
+/**
+ * @brief Display the title of the game in the center of the screen if it can fit
+ */
 void display_title(window_T wind, int y) {
   WINDOW *win = window_win(wind);
   title.height = (!title.height) ? pattern_height(&title) : title.height;
@@ -154,10 +180,16 @@ void display_title(window_T wind, int y) {
 
   int max_w = window_wight(wind);
   if (title.width * 2 < max_w)
-    print_pattern(win, &title, &y, (max_w - title.width * 2) / 2, 0);
+    print_pattern(win, &title, &y, (max_w - title.width * 2) / 2);
   wrefresh(win);
 }
 
+/**
+ * @brief Given a array of struct menu_T, display all menu items and allow user
+ * to chose one of them after which appropriate callback function will be called
+ *
+ * @param title: 1 if title should be displayed
+ */
 void display_menu(window_T wind, char *name, struct menu_T *items, int size,
                   int title) {
   WINDOW *win;
@@ -224,6 +256,10 @@ redraw:;
   }
 }
 
+/**
+ * @brief Initialize ncurses library and set colors based on display mode
+ * selected while compiling
+ */
 void curses_start(void) {
   initscr();
   window_settings(stdscr);
@@ -265,6 +301,11 @@ void curses_start(void) {
 #endif
 }
 
+/**
+ * @brief Handle the reboiling of window_T binary tree after terminal resize
+ *
+ * This function MUST be called after a resize has been detected by any function
+ */
 void handle_winch(int sig) {
   endwin();
   refresh();
@@ -274,6 +315,9 @@ void handle_winch(int sig) {
   window_update_children(MAIN_w);
 }
 
+/**
+ * @brief Start ncurses display and export MAIN_w
+ */
 int display_start(void) {
   curses_start();
   MAIN_w = window_init(window_new());
@@ -286,12 +330,19 @@ int display_start(void) {
   return 1;
 }
 
+/**
+ * @brief Stop ncurses display and cleanup
+ */
 int display_stop(void) {
   window_free(MAIN_w);
   endwin();
   return 1;
 }
 
+/**
+ * @brief Display help menu using all the patterns from all the groups in
+ * pattern_groups array
+ */
 void display_patterns(window_T wind) {
   int y_start = 2, x_start = 2;
   int indent = 2;
@@ -335,7 +386,7 @@ redraw:;
       wattrset(win, 0);
       if (p.height != 0) {
         mvwprintw(win, y++, x, "- %s: ", p.name);
-        print_pattern(win, &p, &y, x, indent);
+        print_pattern(win, &p, &y, x + indent);
         y += 2;
       } else {
         if (*p.name) {

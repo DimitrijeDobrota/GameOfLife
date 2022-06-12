@@ -35,11 +35,10 @@ typedef struct T *T;
  * children when a terminal resize occurs.
  */
 struct window_T {
-  WINDOW
-  *win; ///< ncurses WINDOW* that represents  current window_T on the screen
-  T c1; ///< left child, NULL if none
-  T c2; ///< right child, NULL if none
-  T sibling; ///< sibling, NULL if none
+  WINDOW *win;     ///< ncurses WINDOW* that represents current window_T
+  T       c1;      ///< left child, NULL if none
+  T       c2;      ///< right child, NULL if none
+  T       sibling; ///< sibling, NULL if none
 
   int param[4]; ///<  windows size and dimension, refer to macros
   int mod[3];   ///< Information an recreating children
@@ -133,7 +132,6 @@ T window_init(T self) {
  *
  * Free the object itself and ncurses WINDOW* with delwin
  */
-
 void window_free(T self) {
   if (self == NULL)
     return;
@@ -146,7 +144,6 @@ void window_free(T self) {
 /**
  * @brief Delete all children and subchildren of a window
  */
-
 void window_unsplit(T self) {
   window_free(self->c1);
   window_free(self->c2);
@@ -315,7 +312,6 @@ void window_update_children(T self) {
  * @brief Clear the current window, reset the setting, keep the border call
  * ncurses refresh()
  */
-
 void window_clear(T self) {
   werase(self->win);
   WINDOW_init(self->win, self->title);

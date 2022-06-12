@@ -3,11 +3,15 @@
 
 #include "stdlib.h"
 
+/**
+ * @brief Structure representing one cell pattern to be used in a help menu
+ */
 typedef struct pattern_T {
-  char *cells;
-  char *name;
-  int   height;
-  int   width;
+  char *cells;  ///< string where 1 represents a living cell and 0 a dead one,
+                /// space is used to detonate a new row
+  char *name;   ///< name of the pattern
+  int   height; ///< pattern height , used for cache, no need to fill manually
+  int   width;  ///< pattern width , used for cache, no need to fill manually
 } * pattern_T;
 
 struct pattern_T title = {
@@ -84,10 +88,13 @@ struct pattern_T methuselahs[] = {
     {"00000010 11000000 01000111",             "Diehard", 0},
 };
 
+/**
+ * @brief A structure representing a group of pattern_T of a certain category
+ */
 typedef struct pattern_group_T {
-  char     *name;
-  pattern_T pattern;
-  int       size;
+  char             *name;    ///< name of the group
+  struct pattern_T *pattern; ///< array of pattern_T that comprise a group
+  int               size;    ///< number of elements in a group
 } pattern_group_T;
 
 struct pattern_group_T pattern_groups[] = {
