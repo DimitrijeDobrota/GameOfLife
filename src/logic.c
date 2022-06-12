@@ -86,8 +86,8 @@ void addToCellsWrap(int i, int j, int value) {
 
   for (int k = i - 1; k <= i + 1; k++)
     for (int l = j - 1; l <= j + 1; l++) {
-      int a = (k + height) % height;
-      int b = (l + width) % width;
+      int a = WCLAMP(k, height);
+      int b = WCLAMP(l, width);
       if (a != i || b != j)
         insert(a, b, 0, mod);
     }
@@ -160,6 +160,7 @@ void evolvePredator(void) {
     s1 = (c->val & 31) >> 2;
     mod = c->val & 3;
     if ((s1 + s2) < 2 || (s1 + s2) > 3) {
+      deleter(c);
       continue;
     }
     switch (mod) {
@@ -195,6 +196,7 @@ void evolveVirus(void) {
     mod = c->val & 3;
     if ((s1 + s2) < 2 || (s1 + s2) > 3) {
       deleter(c);
+      continue;
     }
     switch (mod) {
     case 0:

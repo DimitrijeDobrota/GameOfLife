@@ -52,6 +52,7 @@ int input(WINDOW *win, char *buffer, int size, input_f crit) {
   while ((ch = getch()) != '\n') {
     switch (ch) {
     case 27:
+      flushinp();
       buffer[read] = '\0';
       return 100;
     case KEY_BACKSPACE:
@@ -211,8 +212,10 @@ redraw:;
         wattrset(win, COLOR_PAIR(0));
         items[current].callback(items[current].name, current);
         return;
-      } else if (c == 27)
+      } else if (c == 27) {
+        flushinp();
         return;
+      }
       if (is_term_resized(CLINES, CCOLS)) {
         HANDLE_RESIZE;
         goto redraw;
@@ -366,6 +369,7 @@ redraw:;
     case 'q':
     case 'Q':
     case '\n':
+      flushinp();
       goto end;
     }
     if (is_term_resized(CLINES, CCOLS)) {

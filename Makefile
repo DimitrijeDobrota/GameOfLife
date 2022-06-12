@@ -10,6 +10,7 @@ CFLAGS = -I include
 SRC = src
 OBJ = obj
 BINDIR = bin
+LATEX = docs/latex
 
 BIN = bin/$(NAME)
 SRCS=$(wildcard $(SRC)/*.c)
@@ -45,6 +46,10 @@ $(OBJ)/%.o: $(SRC)/%.c
 clean:
 	-$(RM) $(DEL_CLEAN)
 
+docs:
+	doxygen
+	make -C $(LATEX)
+
 help:
 	@echo "Game of Life Simulation"
 	@echo
@@ -54,10 +59,11 @@ help:
 	@echo "    all         - Compiles binary file [Default]"
 	@echo "    clean       - Clean the project by removing binaries"
 	@echo "    help        - Prints a help message with target rules"
+	@echo "    docs        - Compile html and pdf documentation using doxygen and pdflatex"
 	@echo
 	@echo "Optional parameters:"
 	@echo "    DEBUG       - Compile binary file with debug flags enabled"
 	@echo "    NO_UNICODE  - Compile binary file that does not use Unicode characters"
 	@echo
 
-.PHONY: all clean help
+.PHONY: all clean help docs

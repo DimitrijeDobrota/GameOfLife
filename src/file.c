@@ -185,7 +185,10 @@ void file_load_pattern(char *name, int index) {
 
   rewind(f);
   while (fscanf(f, "%d %d %d", &row, &col, &val) != EOF)
-    setAt(pos_y + row, pos_x + col, val);
+    if (height != 0 && width != 0)
+      setAt(WCLAMP(pos_y + row, height), WCLAMP(pos_x + col, width), val);
+    else
+      setAt(pos_y + row, pos_x + col, val);
 }
 
 void file_save_pattern(char *name, int index) {

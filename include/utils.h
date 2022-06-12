@@ -2,12 +2,14 @@
 #define UTILS_H
 
 #include <curses.h>
+
 #include "display.h"
 
 #define MAX(a, b)       ((a > b) ? a : b)
 #define MIN(a, b)       ((a < b) ? a : b)
 #define CLAMP(a, x, y)  ((a) = (MAX(x, MIN(a, y))))
 #define ACLAMP(a, x, y) (MAX(x, MIN(a, y)))
+#define WCLAMP(a, x)    ((a + x) % x)
 
 #ifdef _WIN32
 #define is_term_resized(a, b) is_termresized()
@@ -34,11 +36,11 @@
 #define MEM_CHECK(x)                                                           \
   if ((x) == NULL) {                                                           \
     display_stop();                                                            \
-    printf("MEM ERROR");                                                      \
+    printf("MEM ERROR");                                                       \
     abort();                                                                   \
   }
 
-#define FILE_CHECK(x)                                                           \
+#define FILE_CHECK(x)                                                          \
   if ((x) == NULL) {                                                           \
     display_stop();                                                            \
     printf("FILE ERROR");                                                      \

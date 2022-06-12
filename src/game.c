@@ -203,6 +203,7 @@ int display_select(window_T wind) {
     case 27:
     case 'q':
     case 'Q':
+      flushinp();
       goto end;
     }
     flushinp();
@@ -317,9 +318,8 @@ redraw:;
                    time_const, cord(y_at(cursor_offset_y)),
                    cord(x_at(cursor_offset_x)));
 
-    if (play || screen_change) {
+    if (screen_change) {
       display_game(game_w);
-      wrefresh(game_W);
       screen_change = 0;
       cursor_change = 1;
     }
@@ -331,7 +331,6 @@ redraw:;
     }
 
     while ((total_t = (long int)(end_t - start_t)) < time_const * TIME_MOD) {
-      refresh();
       int c = getch();
       switch (c) {
 
@@ -345,6 +344,7 @@ redraw:;
       case 27:
       case 'q':
       case 'Q':
+        flushinp();
         goto end;
 
       // change num of evolutions before display
