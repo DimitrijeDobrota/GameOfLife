@@ -77,7 +77,7 @@ struct menu_T *file_menu_list(char *ext, void (*callback)(char *, int),
   int            n;
 
   load_files();
-  n = file_select(ext, &buffer);
+  n = file_select_extension(ext, &buffer);
 
   MEM_CHECK(file_items = malloc((n + offset) * sizeof(struct menu_T)));
   for (int i = 0; i < n; i++) {

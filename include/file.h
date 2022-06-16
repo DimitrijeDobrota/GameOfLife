@@ -6,7 +6,7 @@
 int  file_setup(void);
 void load_files(void);
 void free_files(void);
-int  file_select(char *ext, char ***buffer);
+int  file_select_extension(char *ext, char ***buffer);
 
 void file_load_pattern(char *name, int index);
 void file_save_pattern(char *name, int index);

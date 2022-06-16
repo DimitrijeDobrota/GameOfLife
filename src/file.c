@@ -1,8 +1,20 @@
+/**
+ * @file file.c
+ * @author Dimitrije Dobrota
+ * @date 16 June 2022
+ * @brief This file contains functions for handling save files
+ *
+ * This file aims to provide a simple interface for interacting with the
+ * filesystem on Linux and Windows systems. After proper game directory has been
+ * selected, functions implemented here will read the list of files, filter them
+ * based on the extension, create new files for storing a whole game or just a
+ * pattern.
+ */
+
+#include <dirent.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -20,43 +32,9 @@
 #define MAKE_DIR(dir) (mkdir(dir, 0777))
 #endif // _WIN32
 
-typedef struct file_T *file_T;
-struct file_T {
-  file_T next;
-  char  *name;
-};
-
-file_T loaded_files;
-
-file_T file_new(char *name) {
-  file_T f;
-  MEM_CHECK(f = malloc(sizeof(*f)));
-  f->next = NULL;
-  if (name == NULL) {
-    f->name = NULL;
-    return f;
-  }
-
-  MEM_CHECK(f->name = malloc((strlen(name) + 1) * sizeof(char)));
-  strcpy(f->name, name);
-  return f;
-}
-
-void file_free(file_T self) {
-  if (self == NULL)
-    return;
-  file_free(self->next);
-  free(self->name);
-  free(self);
-}
-
-file_T file_add(file_T self, char *name) {
-  for (; self->next != NULL; self = self->next)
-    ;
-  self->next = file_new(name);
-  return self->next;
-}
-
+/**
+ * @brief Check if a directory at specific path exists
+ */
 int DirectoryExists(const char *path) {
   struct stat stats;
   stat(path, &stats);
@@ -64,44 +42,10 @@ int DirectoryExists(const char *path) {
   return S_ISDIR(stats.st_mode);
 }
 
-void file_sort(file_T self) {
-  for (file_T p = self->next; p; p = p->next)
-    for (file_T t = p->next; t; t = t->next)
-      if (strcmp(p->name, t->name) > 0) {
-        char *tmp = p->name;
-        p->name = t->name;
-        t->name = tmp;
-      }
-}
-
-file_T file_fromDirectory(void) {
-  file_T base = file_new(NULL);
-
-  struct dirent *de;
-  DIR           *dr = opendir(".");
-  if (dr == NULL)
-    return NULL;
-
-  while ((de = readdir(dr)) != NULL)
-    file_add(base, de->d_name);
-
-  file_sort(base);
-  file_T n = base->next;
-
-  free(base);
-  free(dr);
-
-  return n;
-}
-
-file_T file_find(file_T self, char *name) {
-  for (; self != NULL; self = self->next) {
-    if (!strcmp(self->name, name))
-      return self;
-  }
-  return NULL;
-}
-
+/**
+ * @brief Try to change the directory to SETTINGS_DIR, if it doesn't exist
+ * create it. Return 0 on failure.
+ */
 int file_setup(void) {
   char *dir;
   MEM_CHECK(dir = malloc(PATH_MAX * sizeof(char)));
@@ -128,7 +72,113 @@ int file_setup(void) {
   return 1;
 }
 
-int file_select(char *ext, char ***buffer) {
+typedef struct file_T *file_T;
+
+/**
+ * @brief A node in a linked list of file names
+ */
+struct file_T {
+  file_T next; ///< pointer to the next node
+  char  *name; ///< name of a file
+};
+
+static file_T loaded_files;
+
+/**
+ * @brief create new file_T
+ *
+ * Allocate the memory for a new file_T. The name field will be set to NULL if
+ * NULL is provided as name, otherwise it will be set to a DUPLICATE of a
+ * string provided.
+ */
+file_T file_new(char *name) {
+  file_T f;
+  MEM_CHECK(f = calloc(1, sizeof(*f)));
+
+  if (name != NULL)
+    MEM_CHECK(f->name = strdup(name));
+
+  return f;
+}
+
+/**
+ * @brief Free the linked list of file_T
+ */
+void file_free(file_T self) {
+  if (self == NULL)
+    return;
+
+  file_free(self->next);
+  free(self->name);
+  free(self);
+}
+
+/**
+ * @brief Add file of a specific name to the begin of a linked list
+ *
+ * First item of the list will be skipped and unchanged.
+ */
+file_T file_add(file_T self, char *name) {
+  file_T new = file_new(name);
+  new->next = self->next;
+  self->next = new;
+  return new;
+}
+
+/**
+ * @brief Sort linked list in a lexicographical order
+ */
+void file_sort(file_T self) {
+  for (file_T p = self->next; p; p = p->next)
+    for (file_T t = p->next; t; t = t->next)
+      if (strcmp(p->name, t->name) > 0) {
+        char *tmp = p->name;
+        p->name = t->name;
+        t->name = tmp;
+      }
+}
+
+/**
+ * @brief Return a new linked list of files contained in the current directory
+ */
+file_T file_fromDirectory(void) {
+  file_T base = file_new(NULL);
+
+  struct dirent *de;
+  DIR           *dr = opendir(".");
+  if (dr == NULL)
+    return NULL;
+
+  while ((de = readdir(dr)) != NULL)
+    file_add(base, de->d_name);
+
+  file_sort(base);
+  file_T n = base->next;
+
+  free(base);
+  free(dr);
+
+  return n;
+}
+
+/**
+ * @brief Check if file is in the linked list, return NULL if it's not
+ */
+file_T file_find(file_T self, char *name) {
+  for (; self != NULL; self = self->next) {
+    if (!strcmp(self->name, name))
+      return self;
+  }
+  return NULL;
+}
+
+/**
+ * @brief Return array of the filenames that have the specific extension
+ *
+ * Memory for the buffer is allocated automatically and should be freed with
+ * free() after it's no longer needed.
+ */
+int file_select_extension(char *ext, char ***buffer) {
   int    maxsize = 4;
   int    size = 0;
   char **tmp = NULL;
@@ -157,21 +207,36 @@ int file_select(char *ext, char ***buffer) {
   return size;
 }
 
+/**
+ * @brief Fill loaded_files linked list with files in the current directory,
+ * freeing any previous lists
+ */
 void load_files(void) {
   if (loaded_files)
     file_free(loaded_files);
   loaded_files = file_fromDirectory();
 }
 
+/**
+ * @brief Free loaded_files linked list
+ */
 void free_files(void) { file_free(loaded_files); }
 
 // from logic.c
-extern Cell **save_cells;
-extern int    save_cells_s, pos_y, pos_x, evolve_index;
+extern Cell **save_cells;   ///< List of Cells to be saved in a pattern
+extern int    save_cells_s; ///< Size of save_cells
+extern int    pos_y;        ///< Real cursor y coordinate
+extern int    pos_x;        ///< Real cursor x coordinate
+extern int    evolve_index; ///< index of the current game mode
 
 // form game.c
-extern int width, height;
+extern int height; ///< height of the current game
+extern int width;  ///< width of the current game
 
+/**
+ * @brief Load a pattern to the current cursor position from a file with name
+ * and extension .part
+ */
 void file_load_pattern(char *name, int index) {
   FILE *f;
   char *fname;
@@ -202,6 +267,10 @@ void file_load_pattern(char *name, int index) {
       setAt(pos_y + row, pos_x + col, val);
 }
 
+/**
+ * @brief Save a pattern of cells referenced in save_cells array to a file with
+ * name and extension .part
+ */
 void file_save_pattern(char *name, int index) {
   FILE *f;
   char *fname;
@@ -227,6 +296,9 @@ void file_save_pattern(char *name, int index) {
   fclose(f);
 }
 
+/**
+ * @brief Load the game from the file with name and extension .all
+ */
 void file_load(char *name, int index) {
   FILE *f;
   char *fname;
@@ -246,6 +318,9 @@ void file_load(char *name, int index) {
   game(h, w, evolve_index);
 }
 
+/**
+ * @brief Save the current game to the file with name and extension .all
+ */
 void file_save(char *name, int index) {
   FILE *f;
   char *fname;
