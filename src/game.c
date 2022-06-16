@@ -1,3 +1,15 @@
+/**
+ * @file game.c
+ * @author Dimitrije Dobrota
+ * @date 16 June 2022
+ * @brief This file handles displaying and managing game using logic module
+ *
+ * This file contain function for both managing and displaying the game
+ * state. Apart from the main game runner that relies on logic module there are
+ * function for displaying game, cursor, and status. It takes care of screen and
+ * cursor position as well as handle mouse input.
+ */
+
 #include <curses.h>
 #include <time.h>
 
@@ -23,10 +35,23 @@ extern mmask_t  mbitmask;
 extern Cell    *hash;
 
 typedef int (*coordinate_f)(int, int, int);
+
+/**
+ * @brief Given a coordinate relative to the screen, return real game coordinate
+ * if not wrapping
+ */
 int coordinate_nowrap(int val, int offset, int max) { return val + offset; }
+
+/**
+ * Given a coordinate relative to the screen, return real game coordinate
+ * wrapping
+ */
 int coordinate_wrap(int val, int offset, int max) {
   return (val + offset + max) % max;
 }
+
+coordinate_f
+    cord; ///< function to be used to get real coordinates from relative ones
 
 int height, width;
 
@@ -36,16 +61,21 @@ static int cursor_offset_x, cursor_offset_y;
 static int wrap, gen = 0, gen_step = 1;
 static int play = 0, time_const = 100, time_step = 1;
 
-coordinate_f cord;
-
 #define y_at(y) y, screen_offset_y, height
 #define x_at(x) x, screen_offset_x, width
 
+/**
+ * @brief Convenience macro for looping over all the cells in a given coordinate
+ * range
+ */
 #define for_each_cell(start_i, end_i, start_j, end_j)                          \
   for (int i = start_i; i < end_i; i++)                                        \
     for (int j = start_j; j < end_j; j++)
 
-// expects val to to be set with value at cordinates
+/**
+ * @brief Display cell at given game coordinates  to the ncurses WINDOW.
+ * Requires int val to be set to the value of the cell to be displayed
+ */
 #define mvprint_cell(win, i, j, color_offset, blank)                           \
   {                                                                            \
     wmove(win, i + 1, j * 2 + 1);                                              \
@@ -53,6 +83,11 @@ coordinate_f cord;
     print_cell(win, blank);                                                    \
   }
 
+/**
+ * @brief Given a coordinate range, display that part of the game to the ncurses
+ * WINDOW. Use color scheme defined in color_offset, with dead cells being
+ * filled with blank
+ */
 #define print_cells(win, start_i, end_i, start_j, end_j, color_offset, blank)  \
   for (int i = start_i; i < end_i; i++) {                                      \
     wmove(win, i + 1, 1 + start_j * 2);                                        \
@@ -63,6 +98,16 @@ coordinate_f cord;
     }                                                                          \
   }
 
+/**
+ * @brief Given a coordinate, screen offset, screen size, and board size
+ * calculate the exact position on the screen or return a negative number if
+ * it shouldn't be displayed.
+ *
+ * @param coordinate: x or y coordinates of a point to be checked
+ * @param screen_offset: screen offset along the x or y axis
+ * @param screen_size: screen size on the x or y axis
+ * @param board_size: game size of x or y axis, needed if wrapping
+ */
 int get_screen_position(int value, int screen_offset, int screen_size,
                         int board_size) {
   int overshoot = screen_offset + screen_size - board_size;
@@ -88,6 +133,10 @@ int get_screen_position(int value, int screen_offset, int screen_size,
   }
 }
 
+/**
+ * @brief Display the part of the game seen by screen to the ncurses WINDOW
+ * provided
+ */
 void display_game(window_T wind) {
   WINDOW *win = window_win(wind);
 
@@ -108,6 +157,10 @@ void display_game(window_T wind) {
   }
 }
 
+/**
+ * @brief Display the cursor, fixing the previous position, to the ncurses
+ * WINDOW provided
+ */
 void display_cursor(WINDOW *win) {
   static int prev_x = 0, prev_y = 0;
   int        val;
@@ -122,18 +175,32 @@ void display_cursor(WINDOW *win) {
   prev_x = cursor_offset_x;
 }
 
+/**
+ * @brief Display game information to the ncurses WINDOW provided
+ */
 void display_status(window_T wind) {
   WINDOW *win = window_win(wind);
 
   wmove(win, 1, 1);
   wprintw(win, " %5s | ", play ? "play" : "pause");
   wprintw(win, wrap ? "Size: %dx%d | " : "Size: unlimited | ", height, width);
-  wprintw(win, "Generation: %10lu(+%d) | ", gen, gen_step);
+  wprintw(win, "Generation: %10d(+%d) | ", gen, gen_step);
   wprintw(win, "dt: %4dms | ", time_const);
-  wprintw(win, "Cursor: %4dx%-4d | ", cursor_offset_y, cursor_offset_x);
+  wprintw(win, "Cursor: %4dx%-4d | ", cord(y_at(cursor_offset_y)),
+          cord(x_at(cursor_offset_x)));
   wrefresh(win);
 }
 
+/**
+ * @brief Display the visual select mode
+ *
+ * This function is interactive:
+ * - Use the wasd to move the selection around
+ * - Use x to delete all selected cells
+ * - Use t to toggle all selected cells
+ * - Use enter to save the selected cells as a pattern
+ * - Use q or esc to quit visual select mode
+ */
 int display_select(window_T wind) {
   int CLINES = LINES, CCOLS = COLS;
 
@@ -237,6 +304,10 @@ end:;
   return ret_value;
 }
 
+/**
+ * @brief save the current screen and cursor coordinates
+ * before resize to use them after redraw. Must be used before goto redraw
+ */
 #define save_state()                                                           \
   {                                                                            \
     t_y = cord(y_at(win_height / 2));                                          \
@@ -245,6 +316,31 @@ end:;
     ct_x = cord(x_at(cursor_offset_x));                                        \
   }
 
+/**
+ * @brief Main game runner. Connection between logic and display
+ * This function is responsive:
+ * - On every resize:
+ *   - window tree is recreated
+ *   - new screen size is calculated with fixed center
+ *   - cursor is clipped to the screen
+ *   - game is redrawn
+ *
+ * This function is interactive:
+ * - Use p to play/pause the simulation
+ * - Use the arrow keys to move the screen around
+ * - Use -/+ to decrease or increase the nums of evolutions before displaying
+ * change
+ * - Use [/] to decrease or increase time wait before update
+ * - Use q or esc to return to the main menu
+ * - If not play:
+ *   - Use wasd to move the cursor around
+ *   - Use space or mouse click to toggle cell state
+ *   - Use v to enter the visual select mode
+ *   - Use l to load the pattern
+ *   - Use o to save the current game
+ *   - Use h to show help menu
+ *   - Use r to redraw the screen
+ */
 void game(int s_h, int s_w, int mode_index) {
   char *mode_name = evolution_names[mode_index];
 
