@@ -89,6 +89,12 @@ int window_height(T self) { return H(self) - 2; }
 /// Getter: return the width of a current window
 int window_wight(T self) { return W(self) - 2; }
 
+/// Getter: return the x coordinate of the current window
+int window_x(T self) { return X(self); }
+
+/// Getter: return the y coordinate of the current window
+int window_y(T self) { return Y(self); }
+
 /// Getter: return the ncurses WINDOW* of the current window
 WINDOW *window_win(T self) { return self->win; }
 
@@ -334,6 +340,19 @@ void window_clear_noRefresh(T self) {
 void window_settings(WINDOW *win) {
   keypad(win, TRUE);
   wattrset(win, COLOR_PAIR(0));
+}
+
+/**
+ * @brief Check if cordinates are in the window
+ */
+int window_clicked(T self, int y, int x) {
+  if (x <= X(self) || y <= Y(self))
+    return 0;
+
+  if (x >= X(self) + W(self) || y >= Y(self) + H(self))
+    return 0;
+
+  return 1;
 }
 
 /**

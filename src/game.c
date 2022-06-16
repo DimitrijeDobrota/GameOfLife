@@ -14,10 +14,12 @@
 #define TIME_MOD 1000
 #endif
 
-extern char    *evolution_names[];
-extern int      evolution_cells[];
-extern int      evolution_size;
+extern char *evolution_names[];
+extern int   evolution_cells[];
+extern int   evolution_size;
+
 extern window_T menu_w;
+extern mmask_t  mbitmask;
 extern Cell    *hash;
 
 typedef int (*coordinate_f)(int, int, int);
@@ -275,6 +277,7 @@ reset_screen:
 redraw:;
   int     CLINES = LINES, CCOLS = COLS;
   clock_t start_t, end_t = 0, total_t;
+  MEVENT  mort;
 
   if (!wrap) {
     game_w = window_center(screen_w, window_height(screen_w),
@@ -399,6 +402,27 @@ redraw:;
           cursor_offset_x++;
           cursor_change = 1;
           break;
+
+#if defined NCURSES_MOUSE_VERSION && !defined NO_MOUSE
+        // mouse  toggle cell
+        case KEY_MOUSE:
+          getmouse(&mort);
+          if (!window_clicked(game_w, mort.y, mort.x))
+            break;
+
+          int mouse_offset_y = mort.y - window_y(game_w) - 1;
+          int mouse_offset_x = (mort.x - window_x(game_w) - 1) / 2;
+          int val =
+              toggleAt(cord(y_at(mouse_offset_y)), cord(x_at(mouse_offset_x)));
+
+          if (mouse_offset_x != cursor_offset_x ||
+              mouse_offset_y != cursor_offset_y) {
+            mvprint_cell(game_W, mouse_offset_y, mouse_offset_x, 2, CHAR_BLANK);
+            wrefresh(game_W);
+          } else
+            cursor_change = 1;
+          break;
+#endif
 
         // toggle cell
         case ' ':

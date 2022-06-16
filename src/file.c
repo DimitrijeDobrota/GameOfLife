@@ -64,6 +64,16 @@ int DirectoryExists(const char *path) {
   return S_ISDIR(stats.st_mode);
 }
 
+void file_sort(file_T self) {
+  for (file_T p = self->next; p; p = p->next)
+    for (file_T t = p->next; t; t = t->next)
+      if (strcmp(p->name, t->name) > 0) {
+        char *tmp = p->name;
+        p->name = t->name;
+        t->name = tmp;
+      }
+}
+
 file_T file_fromDirectory(void) {
   file_T base = file_new(NULL);
 
@@ -75,6 +85,7 @@ file_T file_fromDirectory(void) {
   while ((de = readdir(dr)) != NULL)
     file_add(base, de->d_name);
 
+  file_sort(base);
   file_T n = base->next;
 
   free(base);

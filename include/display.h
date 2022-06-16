@@ -20,6 +20,7 @@
 #endif
 
 extern window_T MAIN_w;
+extern mmask_t  mbitmask;
 
 typedef int (*input_f)(int);
 

@@ -21,6 +21,7 @@
 #include "window.h"
 
 window_T MAIN_w = NULL;
+mmask_t  mbitmask;
 
 /**
  * @brief Offset the cursor for ncurses WINDOW*
@@ -107,8 +108,8 @@ int input(WINDOW *win, char *buffer, int size, input_f crit) {
 }
 
 /**
- * @brief Given a array of struct imenu_T, display a menu where user will enter all of
- * the information required from the array
+ * @brief Given a array of struct imenu_T, display a menu where user will enter
+ * all of the information required from the array
  */
 int display_imenu(window_T wind, struct imenu_T *items, int size) {
   WINDOW *win;
@@ -171,7 +172,8 @@ redraw:;
 }
 
 /**
- * @brief Display the title of the game in the center of the screen if it can fit
+ * @brief Display the title of the game in the center of the screen if it can
+ * fit
  */
 void display_title(window_T wind, int y) {
   WINDOW *win = window_win(wind);
@@ -195,6 +197,9 @@ void display_menu(window_T wind, char *name, struct menu_T *items, int size,
   WINDOW *win;
   int     current = 0;
 
+  char sep[] = ">--------<";
+  int  sep_len = strlen(sep);
+
   int maxi = 0, len = 0;
   for (int i = 0; i < size; i++)
     if ((len = strlen(items[i].name)) > maxi)
@@ -203,16 +208,31 @@ void display_menu(window_T wind, char *name, struct menu_T *items, int size,
   window_set_title(wind, name);
   window_clear_noRefresh(wind);
 
-redraw:;
-  win = window_win(wind);
-  int CLINES = LINES, CCOLS = COLS;
-  int y_offset = wcenter_vertical(wind, size * 2 - 1);
+  int d_start, d_size, y_offset;
 
-  if (title)
-    display_title(wind, title);
+  d_start = 0;
+redraw:;
+  int CLINES = LINES, CCOLS = COLS;
+  win = window_win(wind);
+
+  d_size = window_height(wind) / 2 - 2;
+
+  CLAMP(d_size, 0, size);
+  y_offset = wcenter_vertical(wind, d_size * 2) + 1;
 
   while (TRUE) {
-    CLAMP(current, 0, size - 1);
+    window_clear(wind);
+    if (title)
+      display_title(wind, title);
+
+    if (current == -1)
+      d_start--;
+
+    if (current == d_size)
+      d_start++;
+
+    CLAMP(d_start, 0, size - d_size);
+    CLAMP(current, 0, d_size - 1);
 
     if (!size) {
       char *message = "NOTHING TO DISPLAY HERE!";
@@ -225,11 +245,25 @@ redraw:;
       return;
     }
 
-    for (int i = 0; i < size; i++) {
+    if (d_size < size && d_start == 0) {
+      wattrset(win, COLOR_PAIR(0));
+      wcenter_horizontal(wind, y_offset - 1, sep_len);
+      wprintw(win, "%s", sep);
+    }
+
+    int index = d_start;
+    for (int i = 0; i < d_size; i++, index++) {
       wattrset(win, COLOR_PAIR(i == current ? 1 : 0));
       wcenter_horizontal(wind, y_offset + i * 2, maxi);
-      wprintw(win, "%s", items[i].name);
+      wprintw(win, "%s", items[index].name);
     }
+
+    if (d_size < size && d_start == size - d_size) {
+      wattrset(win, COLOR_PAIR(0));
+      wcenter_horizontal(wind, y_offset + d_size * 2 - 1, sep_len);
+      wprintw(win, "%s", sep);
+    }
+
     wrefresh(win);
 
     while (TRUE) {
@@ -241,8 +275,9 @@ redraw:;
         current++;
         break;
       } else if (c == '\n') {
+        int index = d_start + current;
         wattrset(win, COLOR_PAIR(0));
-        items[current].callback(items[current].name, current);
+        items[index].callback(items[index].name, index);
         return;
       } else if (c == 27) {
         flushinp();
@@ -298,6 +333,10 @@ void curses_start(void) {
   init_pair(8, COLOR_WHITE, COLOR_YELLOW);
   init_pair(9, COLOR_WHITE, COLOR_BLUE);
   init_pair(10, COLOR_RED, COLOR_BLACK);
+#endif
+
+#if defined NCURSES_MOUSE_VERSION && !defined NO_MOUSE
+  mbitmask = mousemask(BUTTON1_CLICKED, NULL);
 #endif
 }
 

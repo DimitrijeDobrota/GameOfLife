@@ -1,6 +1,6 @@
 # GNU Makefile for Game of Life simulation
 #
-# Usage: make [-f path\Makefile] [DEBUG=Y] [NO_UNICODE=Y] target
+# Usage: make [-f path\Makefile] [DEBUG=Y] [NO_UNICODE=Y] [NO_MOUSE=Y] target
 
 NAME = gol
 CC = gcc
@@ -35,6 +35,10 @@ ifeq ($(NO_UNICODE),Y)
 	CFLAGS += -D NO_UNICODE
 endif
 
+ifeq ($(NO_MOUSE),Y)
+	CFLAGS += -D NO_MOUSE
+endif
+
 all: $(BIN)
 
 $(BIN): $(OBJS)
@@ -64,6 +68,7 @@ help:
 	@echo "Optional parameters:"
 	@echo "    DEBUG       - Compile binary file with debug flags enabled"
 	@echo "    NO_UNICODE  - Compile binary file that does not use Unicode characters"
+	@echo "    NO_MOUSE    - Compile binary file that does not have mouse support even if terminal supports it"
 	@echo
 
 .PHONY: all clean help docs
