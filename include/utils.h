@@ -8,7 +8,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "display.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <curses.h>
 
 /// maximum of the two numbers
 #define MAX(a, b) ((a > b) ? a : b)
@@ -32,20 +35,22 @@
 #define UNICODE 1
 #endif
 
+static void err(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  exit(1);
+}
+
 /// Check for memory error, and abort
 #define MEM_CHECK(x)                                                           \
-  if ((x) == NULL) {                                                           \
-    display_stop();                                                            \
-    printf("MEM ERROR");                                                       \
-    abort();                                                                   \
-  }
+  if ((x) == NULL)                                                             \
+    err("MEMORY ERROR");
 
 /// Check for file error, and abort
 #define FILE_CHECK(x)                                                          \
-  if ((x) == NULL) {                                                           \
-    display_stop();                                                            \
-    printf("FILE ERROR");                                                      \
-    abort();                                                                   \
-  }
+  if ((x) == NULL)                                                             \
+    err("MEMORY ERROR");
 
 #endif

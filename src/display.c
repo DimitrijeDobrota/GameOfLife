@@ -296,10 +296,14 @@ redraw:;
  * selected while compiling
  */
 void curses_start(void) {
-  initscr();
+  if (initscr() == NULL)
+    err("Fatal Error: initscr()");
+
   window_settings(stdscr);
 
-  start_color();
+  if (!has_colors() || start_color() != OK)
+    err("Fatal Error: Terminal does not support colors");
+
   use_default_colors();
 
   curs_set(0);
@@ -357,25 +361,17 @@ void handle_winch(int sig) {
 /**
  * @brief Start ncurses display and export MAIN_w
  */
-int display_start(void) {
+void display_start(void) {
   curses_start();
   MAIN_w = window_init(window_new());
-
-#ifdef _WIN32
-  resize_term(0, 0);
-  handle_winch(10);
-#endif
-
-  return 1;
 }
 
 /**
  * @brief Stop ncurses display and cleanup
  */
-int display_stop(void) {
+void display_stop(void) {
   window_free(MAIN_w);
   endwin();
-  return 1;
 }
 
 /**

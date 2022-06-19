@@ -10,7 +10,7 @@
 
 #include "display.h"
 
-int  file_setup(void);
+void  file_setup(void);
 void load_files(void);
 void free_files(void);
 int  file_select_extension(char *ext, char ***buffer);

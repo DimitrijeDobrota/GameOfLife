@@ -8,7 +8,7 @@
 #ifndef PATTERN_H
 #define PATTERN_H
 
-#include "stdlib.h"
+#include <stdlib.h>
 
 /**
  * @brief Structure representing one cell pattern to be used in the help menu

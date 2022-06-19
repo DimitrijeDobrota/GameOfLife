@@ -17,8 +17,8 @@ window_T        menu_w;
 
 void settings(char *pass, int index) {
   struct imenu_T imenu_items[] = {
-      {   "Number of rows", 6, isdigit, NULL},
-      {"Number of columns", 6, isdigit, NULL},
+      {   "Number of rows", 9, isdigit, NULL},
+      {"Number of columns", 9, isdigit, NULL},
   };
   int imenu_items_s = sizeof(imenu_items) / sizeof(struct imenu_T);
 
@@ -133,10 +133,7 @@ void help(char *pass, int index) {
   display_patterns(menu_w);
 }
 
-void exitp(char *pass, int index) {
-  display_stop();
-  exit(0);
-}
+void exitp(char *pass, int index) { exit(0); }
 
 struct menu_T menu_items[] = {
     {mode_select, "Start"},
@@ -149,25 +146,14 @@ int menu_items_s = sizeof(menu_items) / sizeof(struct menu_T);
 
 int main(void) {
   setlocale(LC_ALL, "");
+  atexit(display_stop);
 
-  if (!file_setup()) {
-    printf("File setup error\n");
-    abort();
-  }
-
-  if (!display_start()) {
-    printf("Couldn't start the display!\n");
-    abort();
-  }
+  file_setup();
+  display_start();
 
   menu_w = MAIN_w;
   while (TRUE) {
     display_menu(menu_w, "Main menu", menu_items, menu_items_s, 1);
-  }
-
-  if (!display_stop()) {
-    printf("Couldn't stop the display!\n");
-    abort();
   }
 
   return 0;

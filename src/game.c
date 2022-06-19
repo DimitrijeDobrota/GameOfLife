@@ -20,6 +20,11 @@
 #include "utils.h"
 #include "window.h"
 
+#define DEF_GEN_STEP    1
+#define DEF_SCREEN_STEP 1
+#define DEF_TIME_CONST  100
+#define DEF_TIME_STEP   1
+
 #ifdef _WIN32
 #define TIME_MOD 1
 #else
@@ -58,8 +63,10 @@ int height, width;
 static int win_height, win_width;
 static int screen_offset_x, screen_offset_y;
 static int cursor_offset_x, cursor_offset_y;
-static int wrap, gen = 0, gen_step = 1;
-static int play = 0, time_const = 100, time_step = 1;
+static int wrap, gen_step, screen_step;
+static int play, time_const, time_step;
+
+static unsigned gen;
 
 #define y_at(y) y, screen_offset_y, height
 #define x_at(x) x, screen_offset_x, width
@@ -183,10 +190,10 @@ void display_status(window_T wind) {
 
   wmove(win, 1, 1);
   wprintw(win, " %5s | ", play ? "play" : "pause");
-  wprintw(win, wrap ? "Size: %dx%d | " : "Size: unlimited | ", height, width);
-  wprintw(win, "Generation: %10d(+%d) | ", gen, gen_step);
+  wprintw(win, wrap ? "Size: %9dx%9d | " : "Size: unlimited | ", height, width);
+  wprintw(win, "Generation: %10u(+%d) | ", gen, gen_step);
   wprintw(win, "dt: %4dms | ", time_const);
-  wprintw(win, "Cursor: %4dx%-4d | ", cord(y_at(cursor_offset_y)),
+  wprintw(win, "Cursor: %10dx%10d | ", cord(y_at(cursor_offset_y)),
           cord(x_at(cursor_offset_x)));
   wrefresh(win);
 }
@@ -288,6 +295,7 @@ int display_select(window_T wind) {
     case 'q':
     case 'Q':
       flushinp();
+      ret_value = 1;
       goto end;
     }
     flushinp();
@@ -299,8 +307,11 @@ int display_select(window_T wind) {
     overlay(win, new);
   }
 end:;
+
+  if (UNICODE)
+    delwin(new);
+
   nodelay(stdscr, 1);
-  delwin(new);
   return ret_value;
 }
 
@@ -348,6 +359,10 @@ void game(int s_h, int s_w, int mode_index) {
   wrap = 1;
 
   window_T status_w, screen_w, game_w;
+
+  gen = 0;
+  gen_step = DEF_GEN_STEP, time_const = DEF_TIME_CONST;
+  time_step = DEF_TIME_STEP, screen_step = DEF_SCREEN_STEP;
 
 reset_screen:
   status_w = window_split(menu_w, 1, 3, 0, "Status", "Game");
@@ -536,7 +551,6 @@ redraw:;
 
           save_state();
           goto reset_screen;
-          break;
 
         // lead pattern
         case 'l':
@@ -544,27 +558,27 @@ redraw:;
           window_unsplit(menu_w);
           setPosition(cord(y_at(cursor_offset_y)), cord(x_at(cursor_offset_x)));
           load_pattern();
+
           save_state();
           goto reset_screen;
-          break;
 
         // save game
         case 'o':
         case 'O':
           window_unsplit(menu_w);
           save();
+
           save_state();
           goto reset_screen;
-          break;
 
         // help menu
         case 'h':
         case 'H':
           window_unsplit(menu_w);
           display_patterns(menu_w);
+
           save_state();
           goto reset_screen;
-          break;
 
         // redraw screen
         case 'r':
@@ -581,7 +595,7 @@ redraw:;
       case KEY_END:
       case KEY_HOME:
       case KEY_LEFT:
-        screen_offset_x--;
+        screen_offset_x -= screen_step;
         screen_change = 1;
         break;
       case KEY_A3:
@@ -589,7 +603,7 @@ redraw:;
       case KEY_NPAGE:
       case KEY_PPAGE:
       case KEY_RIGHT:
-        screen_offset_x++;
+        screen_offset_x += screen_step;
         screen_change = 1;
         break;
       }
@@ -600,7 +614,7 @@ redraw:;
       case KEY_HOME:
       case KEY_PPAGE:
       case KEY_UP:
-        screen_offset_y--;
+        screen_offset_y -= screen_step;
         screen_change = 1;
         break;
       case KEY_C1:
@@ -608,7 +622,7 @@ redraw:;
       case KEY_DOWN:
       case KEY_END:
       case KEY_NPAGE:
-        screen_offset_y++;
+        screen_offset_y += screen_step;
         screen_change = 1;
       }
 

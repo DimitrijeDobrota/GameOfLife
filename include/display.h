@@ -77,8 +77,8 @@ struct imenu_T {
 
 int input(WINDOW *win, char *buffer, int size, input_f crit);
 
-int display_start(void);
-int display_stop(void);
+void display_start(void);
+void display_stop(void);
 
 void display_menu(window_T wind, char *name, struct menu_T *items, int size,
                   int title);

@@ -5,10 +5,10 @@
  * @brief This file contains functions for handling save files
  *
  * This file aims to provide a simple interface for interacting with the
- * file system on Linux and Windows systems. After proper game directory has been
- * selected, functions implemented here will read the list of files, filter them
- * based on the extension, create new files for storing a whole game or just a
- * pattern.
+ * file system on Linux and Windows systems. After proper game directory has
+ * been selected, functions implemented here will read the list of files, filter
+ * them based on the extension, create new files for storing a whole game or
+ * just a pattern.
  */
 
 #include <dirent.h>
@@ -46,7 +46,7 @@ int DirectoryExists(const char *path) {
  * @brief Try to change the directory to SETTINGS_DIR, if it doesn't exist
  * create it. Return 0 on failure.
  */
-int file_setup(void) {
+void file_setup(void) {
   char *dir;
   MEM_CHECK(dir = malloc(PATH_MAX * sizeof(char)));
 
@@ -59,17 +59,17 @@ int file_setup(void) {
 
   if (!DirectoryExists(dir)) {
     printf("Directory %s does not exists; Trying to create it...\n", dir);
-    if (MAKE_DIR(dir) != 0) {
-      printf("Cannot create the directory\n");
-      return 0;
-    }
+    if (MAKE_DIR(dir) != 0)
+      err("Cannot create the directory %s", dir);
   }
 
   if (chdir(dir) != 0) {
     printf("Cannot change the directory\n");
-    return 0;
+    if (MAKE_DIR(dir) != 0)
+      err("Cannot change directory to %s", dir);
   }
-  return 1;
+
+  free(dir);
 }
 
 typedef struct file_T *file_T;
@@ -95,8 +95,10 @@ file_T file_new(char *name) {
   file_T f;
   MEM_CHECK(f = calloc(1, sizeof(*f)));
 
-  if (name != NULL)
-    MEM_CHECK(f->name = strdup(name));
+  if (name != NULL) {
+    MEM_CHECK(f->name = malloc((strlen(name) + 1) * sizeof(char)));
+    strcpy(f->name, name);
+  }
 
   return f;
 }
@@ -275,7 +277,7 @@ void file_save_pattern(char *name, int index) {
   FILE *f;
   char *fname;
 
-  MEM_CHECK(fname = malloc((strlen(name) + 5) * sizeof(char)));
+  MEM_CHECK(fname = malloc((strlen(name) + 6) * sizeof(char)));
   sprintf(fname, "%s.part", name);
 
   FILE_CHECK(f = fopen(fname, "w"));
