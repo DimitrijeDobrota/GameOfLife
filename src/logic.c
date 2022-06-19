@@ -7,11 +7,18 @@
 
 Cell *hash = NULL;
 
+/**
+ * @brief function that delets cell from hash table utilazing uthash.h
+ */
 void deleter(Cell *c) {
   HASH_DEL(hash, c);
   free(c);
 }
 
+/**
+ * @brief function that returns pointer to the cell in hash table at given
+ * position.
+ */
 Cell *get(int row, int col) {
   Cell *c, t;
 
@@ -57,6 +64,10 @@ int   toggle_mod = 2;
 static void (*evolve)(void);
 static void (*addToCells)(int i, int j, int value);
 
+/**
+ * @brief function that adds its value to neighbouring cells;
+ */
+
 void addToCellsNormal(int i, int j, int value) {
   int mod = 0;
   switch (value & 3) {
@@ -73,6 +84,10 @@ void addToCellsNormal(int i, int j, int value) {
         insert(k, l, 0, mod);
 }
 
+/**
+ * @brief simmilar to addToCellsNormal() with exception that it check for
+ * corners in case of wrapping;
+ */
 void addToCellsWrap(int i, int j, int value) {
   int mod = 0;
   switch (value & 3) {
@@ -105,7 +120,9 @@ void doAdditions(void) {
     addToCells(buff[i]->cord.row, buff[i]->cord.col, buff[i]->val);
 }
 
-/* Evolutions */
+/**
+ * @brief function responsible for calculation for a game mod called "Normal";
+ */
 void evolveNormal(void) {
   Cell *c, *c_next;
 
@@ -124,6 +141,9 @@ void evolveNormal(void) {
   }
 }
 
+/**
+ * @brief function responsible for calculation for a game mod called "CoExist";
+ */
 void evolveCoExist(void) {
   Cell *c, *c_next;
 
@@ -150,6 +170,9 @@ void evolveCoExist(void) {
   }
 }
 
+/**
+ * @brief function responsible for calculation for a game mod called "Predator";
+ */
 void evolvePredator(void) {
   Cell *c, *c_next;
   doAdditions();
@@ -185,6 +208,9 @@ void evolvePredator(void) {
   }
 }
 
+/**
+ * @brief function responsible for calculation for a game mod called "Virus";
+ */
 void evolveVirus(void) {
   Cell *c, *c_next;
   doAdditions();
@@ -220,6 +246,9 @@ void evolveVirus(void) {
   }
 }
 
+/**
+ * @brief function responsible for calculation for a game mod called "Unknown";
+ */
 void evolveUnknown(void) { // Assumption 3 ones and 3 twos result in 50/50
                            // chanse of 0 becoming one of them:
   Cell *c, *c_next;
@@ -269,12 +298,18 @@ static void (*evolution_modes[])() = {
 static void (*addition_modes[])(int i, int j, int value) = {addToCellsNormal,
                                                             addToCellsWrap};
 
+/**
+ * @brief parent function that calls evolution;
+ */
 void do_evolution(int steps) {
   while (steps--) {
     evolve();
   }
 }
 
+/**
+ * @brief init function for game logic;
+ */
 int logic_init(int isWrapping, int index) {
   save_cells_s = 0;
   save_cells_sm = 100;
@@ -287,6 +322,9 @@ int logic_init(int isWrapping, int index) {
   return 1;
 }
 
+/**
+ * @brief memory cleaner for logic.c;
+ */
 int logic_free(void) {
   HASH_CLEAR(hh, hash);
   addToCells = NULL;
@@ -297,6 +335,10 @@ int logic_free(void) {
   return 1;
 }
 
+/**
+ * @brief function that toggles the value at coords (i,j). E.g from 0->1, 1->2
+ * or 2->0;
+ */
 int toggleAt(int i, int j) {
   Cell *c;
 
@@ -311,6 +353,9 @@ int toggleAt(int i, int j) {
   return val;
 }
 
+/**
+ * @brief function that destroys cell at coords(i,j);
+ */
 void deleteAt(int i, int j) {
   Cell *c;
 
@@ -318,6 +363,9 @@ void deleteAt(int i, int j) {
     deleter(c);
 }
 
+/**
+ * @brief function that sets value(val) at coords(i,j);
+ */
 void setAt(int i, int j, int val) {
   Cell *c;
 
@@ -327,6 +375,9 @@ void setAt(int i, int j, int val) {
     insert(i, j, val, 0);
 }
 
+/**
+ * @brief functiong that returns value of a cell at given coords.
+ */
 int getAt(int i, int j) {
   Cell *c = get(i, j);
   return ((c) ? c->val : 0);
