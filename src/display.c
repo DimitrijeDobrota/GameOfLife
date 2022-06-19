@@ -7,7 +7,7 @@
  * This file is the main link with ncurses interface. It is responsible for
  * starting and stopping ncurses library as well as managing it's resources and
  * handling terminal resize by rebuilding window_T binary tree. It exports
- * window_T MAIN_w as the entery point for other windows and disiplay calls. It
+ * window_T MAIN_w as the entry point for other windows and display calls. It
  * handles the display of menus and user input.
  */
 #include <curses.h>
@@ -180,7 +180,7 @@ void display_title(window_T wind, int y) {
   title.height = (!title.height) ? pattern_height(&title) : title.height;
   title.width = (!title.width) ? pattern_width(&title) : title.width;
 
-  int max_w = window_wight(wind);
+  int max_w = window_width(wind);
   if (title.width * 2 < max_w)
     print_pattern(win, &title, &y, (max_w - title.width * 2) / 2);
   wrefresh(win);
@@ -391,7 +391,7 @@ void display_patterns(window_T wind) {
 redraw:;
   int     CLINES = LINES, CCOLS = COLS;
   WINDOW *win = window_win(wind);
-  int     ph = window_height(wind), pw = window_wight(wind);
+  int     ph = window_height(wind), pw = window_width(wind);
   int     y, x, maxi, max_x;
 
   x = x_start;

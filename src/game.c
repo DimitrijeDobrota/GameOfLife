@@ -219,7 +219,7 @@ int display_select(window_T wind) {
     new = win;
   }
 
-  int ph = window_height(wind), pw = window_wight(wind) / 2;
+  int ph = window_height(wind), pw = window_width(wind) / 2;
   nodelay(stdscr, 0);
   while (TRUE) {
     int start_i = MIN(cursor_offset_y, current_offset_y);
@@ -276,7 +276,7 @@ int display_select(window_T wind) {
           toggleAt(cord(y_at(i)), cord(x_at(j)));
       goto end;
 
-    // confirm and save slection
+    // confirm and save selection
     case '\n':
       for_each_cell(start_i, end_i + 1, start_j, end_j + 1)
           saveCell(cord(y_at(i)), cord(x_at(j)));
@@ -328,7 +328,7 @@ end:;
  * This function is interactive:
  * - Use p to play/pause the simulation
  * - Use the arrow keys to move the screen around
- * - Use -/+ to decrease or increase the nums of evolutions before displaying
+ * - Use -/+ to decrease or increase the numbs of evolutions before displaying
  * change
  * - Use [/] to decrease or increase time wait before update
  * - Use q or esc to return to the main menu
@@ -377,11 +377,11 @@ redraw:;
 
   if (!wrap) {
     game_w = window_center(screen_w, window_height(screen_w),
-                           window_wight(screen_w), mode_name);
+                           window_width(screen_w), mode_name);
   }
 
   WINDOW *game_W = window_win(game_w);
-  win_height = window_height(game_w), win_width = window_wight(game_w) / 2;
+  win_height = window_height(game_w), win_width = window_width(game_w) / 2;
 
   window_clear(menu_w);
   window_clear(screen_w);
@@ -466,7 +466,7 @@ redraw:;
         gen_step--;
         break;
 
-      // change refreshrate
+      // change refresh rate
       case ']':
         time_const += time_step;
         break;
@@ -626,7 +626,6 @@ redraw:;
       }
       end_t = clock();
     }
-    flushinp();
   }
 end:;
   window_unsplit(menu_w);

@@ -1,3 +1,10 @@
+/**
+ * @file game.h
+ * @author Dimitrije Dobrota
+ * @date 19 June 2022
+ * @brief Game interface
+ */
+
 #ifndef GAME_H
 #define GAME_H
 

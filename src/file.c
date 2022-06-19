@@ -5,7 +5,7 @@
  * @brief This file contains functions for handling save files
  *
  * This file aims to provide a simple interface for interacting with the
- * filesystem on Linux and Windows systems. After proper game directory has been
+ * file system on Linux and Windows systems. After proper game directory has been
  * selected, functions implemented here will read the list of files, filter them
  * based on the extension, create new files for storing a whole game or just a
  * pattern.

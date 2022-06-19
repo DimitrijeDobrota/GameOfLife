@@ -1,3 +1,10 @@
+/**
+ * @file window.h
+ * @author Dimitrije Dobrota
+ * @date 19 June 2022
+ * @brief Window interface
+ */
+
 #ifndef WINDOW_H
 #define WINDOW_H
 
@@ -23,14 +30,14 @@ void window_settings(WINDOW *win);
 void window_unsplit(T self);
 void window_update_children(T self);
 
-// Setters and Gettern
+// Setters and Getters
 
 T window_sibiling(T self);
 
 WINDOW *window_win(T self);
 
 int  window_height(T self);
-int  window_wight(T self);
+int  window_width(T self);
 int  window_x(T self);
 int  window_y(T self);
 void window_set_title(T self, char *title);

@@ -1,3 +1,10 @@
+/**
+ * @file file.h
+ * @author Dimitrije Dobrota
+ * @date 19 June 2022
+ * @brief File interface
+ */
+
 #ifndef FILE_H
 #define FILE_H
 

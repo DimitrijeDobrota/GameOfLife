@@ -8,7 +8,7 @@
  * tree of windows used for recalculating the ncurses WINDOW position in
  * dimension when the terminal has been resized. It's possible to "split" the
  * current window in two using a given ration or fixed size, as well as create
- * a centered subwindow. It makes some of the tree data accessible via function
+ * a centered sub-window. It makes some of the tree data accessible via function
  * so that other functions can know about the sizes and adapt to them.
  */
 
@@ -47,9 +47,9 @@ struct window_T {
 };
 
 /**
- * @breif Apply settings, draw a border, print title for a give window
+ * @brief Apply settings, draw a border, print title for a give window
  *
- * @param title: title to be prinded unless NULL
+ * @param title: title to be printed unless NULL
  */
 void WINDOW_init(WINDOW *win, char *title) {
   window_settings(win);
@@ -86,8 +86,8 @@ T window_sibiling(T self) { return self->sibling; }
 /// Getter: return the height of the current window
 int window_height(T self) { return H(self) - 2; }
 
-/// Getter: return the width of a current window
-int window_wight(T self) { return W(self) - 2; }
+/// Getter: return the  of a current window
+int window_width(T self) { return W(self) - 2; }
 
 /// Getter: return the x coordinate of the current window
 int window_x(T self) { return X(self); }
@@ -104,7 +104,7 @@ void window_set_title(T self, char *title) { self->title = title; }
 /**
  * @brief create new ncurses WINDOW to the specification with default settings
  *
- * New ncruses WINDOW is created with newwin and it should be deleted with
+ * New ncurses WINDOW is created with newwin and it should be deleted with
  * delwin. Setting are applied with the call to WINDOW_INIT
  */
 WINDOW *window_win_new(T self) {
@@ -148,7 +148,7 @@ void window_free(T self) {
 }
 
 /**
- * @brief Delete all children and subchildren of a window
+ * @brief Delete all children and sub-children of a window
  */
 void window_unsplit(T self) {
   window_free(self->c1);
@@ -162,7 +162,7 @@ void window_unsplit(T self) {
  * children
  *
  * This function takes care of calculation for two windows in a given ration or
- * fixed size, and single subwindow.
+ * fixed size, and single sub-window.
  * If a given windows has 2 children then they are split with the following
  * rule:
  * - If mod[0] is 0, two created windows will be side by side
@@ -234,7 +234,7 @@ void window_calc_children(T self) {
 /**
  * @brief Split the window in a given ration into two windows with a name
  *
- * @param hor: should the split line be horizontal or verical
+ * @param hor: should the split line be horizontal or vertical
  * @param a: ration of the first window
  * @param b: ration of the second window
  * @param name1: name of the first window
@@ -270,11 +270,11 @@ T window_split(T self, int hor, int a, int b, char *name1, char *name2) {
 }
 
 /**
- * @brief Create a subwindow that will be of a given size or made to fit it's
+ * @brief Create a sub-window that will be of a given size or made to fit it's
  * parent
  *
  * @param h: desired height of a new window_T
- * @param w: desired width of a new window_T
+ * @param w: desired  of a new window_T
  * @param name: name of the new window_T
  */
 T window_center(T self, int h, int w, char *name) {
@@ -294,7 +294,7 @@ T window_center(T self, int h, int w, char *name) {
 }
 
 /**
- * @brief Recursevly recalculate the size of each child and make new ncurses
+ * @brief Recursively recalculate the size of each child and make new ncurses
  * WINDOW
  */
 void window_update_children(T self) {
@@ -343,7 +343,7 @@ void window_settings(WINDOW *win) {
 }
 
 /**
- * @brief Check if cordinates are in the window
+ * @brief Check if coordinates are in the window
  */
 int window_clicked(T self, int y, int x) {
   if (x <= X(self) || y <= Y(self))
@@ -360,7 +360,7 @@ int window_clicked(T self, int y, int x) {
  * text of len n will be centered
  *
  * @param y: y position
- * @n lenfth of the text to be centered
+ * @n length of the text to be centered
  */
 void wcenter_horizontal(T window, int y, int n) {
   wmove(window->win, y, (W(window) - n - 2) / 2 + 1);
