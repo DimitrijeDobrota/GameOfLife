@@ -1,15 +1,27 @@
+/**
+ * @file logic.h
+ * @author Mateja Marsenic
+ * @date 30 May 2022
+ * @brief This file contains functions and structures for logic.
+ */
+
 #ifndef LOGIC_H
 #define LOGIC_H
 
 #include "uthash.h"
 
-#define MAX_SIZE 101
-
+/**
+ * @brief structure that stores cells coordinates to use as a key in a hash
+ * map-uh;
+ */
 typedef struct Cell_cord {
   int row;
   int col;
 } Cell_cord;
 
+/**
+ * @brief sructure that stores a cell using hash map;
+ */
 typedef struct Cell {
   Cell_cord      cord;
   unsigned char  val;

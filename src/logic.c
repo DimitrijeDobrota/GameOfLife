@@ -1,3 +1,10 @@
+/**
+ * @file logic.c
+ * @author Mateja Marsenic
+ * @date 30 May 2022
+ * @brief This file contains functions used in games logic.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -121,7 +128,7 @@ void doAdditions(void) {
 }
 
 /**
- * @brief function responsible for calculation for a game mod called "Normal";
+ * @brief function responsible for calculation for a game mode called "Normal";
  */
 void evolveNormal(void) {
   Cell *c, *c_next;
@@ -142,7 +149,7 @@ void evolveNormal(void) {
 }
 
 /**
- * @brief function responsible for calculation for a game mod called "CoExist";
+ * @brief function responsible for calculation for a game mode called "CoExist";
  */
 void evolveCoExist(void) {
   Cell *c, *c_next;
@@ -171,7 +178,8 @@ void evolveCoExist(void) {
 }
 
 /**
- * @brief function responsible for calculation for a game mod called "Predator";
+ * @brief function responsible for calculation for a game mode called
+ * "Predator";
  */
 void evolvePredator(void) {
   Cell *c, *c_next;
@@ -209,7 +217,7 @@ void evolvePredator(void) {
 }
 
 /**
- * @brief function responsible for calculation for a game mod called "Virus";
+ * @brief function responsible for calculation for a game mode called "Virus";
  */
 void evolveVirus(void) {
   Cell *c, *c_next;
@@ -247,7 +255,7 @@ void evolveVirus(void) {
 }
 
 /**
- * @brief function responsible for calculation for a game mod called "Unknown";
+ * @brief function responsible for calculation for a game mode called "Unknown";
  */
 void evolveUnknown(void) { // Assumption 3 ones and 3 twos result in 50/50
                            // chanse of 0 becoming one of them:
